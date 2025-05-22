@@ -1,0 +1,196 @@
+(ns soliton.core
+  (:require [ergo.core :as ergo]
+            [soliton.protocols :as p]
+            [soliton.lens]))
+
+(defn focus
+  {:inline (fn [l s] `(soliton.protocols/-focus ~l ~s))}
+  [l s]
+  (p/-focus l s))
+
+(defn put
+  {:inline (fn [l v s] `(soliton.protocols/-put ~l ~v ~s))}
+  [l v s]
+  (p/-put l v s))
+
+(defn over
+  {:inline (fn [l f s] `(soliton.protocols/-over ~l ~f ~s))}
+  [l f s]
+  (p/-over l f s))
+
+(defn focus-rf
+  [state lens]
+  (p/-focus lens state))
+
+(defn focus-steps
+  [lens state]
+  (transduce (ergo/reductions focus-rf state)
+             conj
+             []
+             lens))
+
+(extend clojure.lang.Keyword            ; cljs cljs.core/Keyword
+  p/Focus
+  {:-focus (fn [l s] (get s l))}
+  p/Put
+  {:-put (fn [l v s] (assoc s l v))}
+  p/Over
+  {:-over (fn [l f s] (update s l f))})
+
+(extend clojure.lang.Fn                 ; cljs function
+  p/Focus
+  {:-focus (fn [l s] (l s))}
+  p/Put
+  {:-put (fn [l v s] (l s v))}
+  p/Over
+  {:-over p/default-over})
+
+(extend clojure.lang.Keyword            ; cljs cljs.core/Keyword
+  p/Focus
+  {:-focus (fn [l s] (get s l))}
+  p/Put
+  {:-put (fn [l v s] (assoc s l v))}
+  p/Over
+  {:-over (fn [l f s] (update s l f))})
+
+(extend java.lang.Long                  ; cljs number
+  p/Focus
+  {:-focus soliton.lens/filled-focus}
+  p/Put
+  {:-put soliton.lens/filled-put}
+  p/Over
+  {:-over soliton.lens/filled-over})
+
+(extend nil
+  p/Focus
+  {:-focus (fn [l s] nil)}
+  p/Put
+  {:-put (fn [l v s] s)}
+  p/Over
+  {:-over (fn [l f s] s)})
+
+;; reduce-focus, rec-put and rec-over are faster than other methods of
+;; evaluating lens seqs but can't get steps or work in non-standard execution contexts
+;; and it's not tail recursive (but how big are your lenses anyway)
+;; clojure's assoc-in/update-in work this way
+
+(defn reduce-focus
+  [lens state]
+  (if (sequential? lens)
+    (reduce focus-rf state lens)
+    (p/-focus lens state)))
+
+(defn rec-put
+  [[l & ls] v s]
+  (if ls
+    (p/-put l (rec-put ls v (p/-focus l s)) s)
+    (p/-put l v s)))
+
+(defn rec-over
+  [[l & ls] f s]
+  (if ls
+    (p/-put l (rec-over ls f (p/-focus l s)) s)
+    (p/-over l f s)))
+
+(extend clojure.lang.Sequential
+  p/Focus
+  {:-focus reduce-focus}
+  p/Put
+  {:-put rec-put}
+  p/Over
+  {:-over rec-over})
+
+;; ** fns for maps of lenses
+
+(defn map-focus
+  [lens-map s]
+  (reduce-kv (fn [init k v]
+               (assoc init k (p/-focus v s)))
+             (empty lens-map)
+             lens-map))
+
+(defn map-put
+  [lens-map value-map s]
+  (reduce-kv (fn [init k v]
+               (p/-put v (get value-map k) init))
+             s
+             lens-map))
+
+(defn map-over
+  [lens-map f s]
+  (p/default-over lens-map f s))
+
+(extend-type clojure.lang.APersistentMap
+  p/Focus
+  (p/-focus [l s] (map-focus l s))
+  p/Put
+  (p/-put [l v s] (map-put l v s))
+  p/Over
+  (p/-over [l f s] (map-over l f s)))
+
+;; ** fns for sets of lenses
+
+(defn set-focus
+  [lens-set s]
+  (into #{} (map #(p/-focus % s) lens-set)))
+
+(defn set-put
+  [lens-set v s]
+  (let [[lens & lenses] lens-set]
+    (if lenses
+      (recur lenses v (p/-put lens v s))
+      (p/-put lens v s))))
+
+(defn set-over
+  [lens-set f s]
+  (let [[lens & lenses] lens-set]
+    (if lenses
+      (recur lenses f (p/-over lens f s))
+      (p/-over lens f s))))
+
+(extend-type clojure.lang.PersistentHashSet
+  p/Focus
+  (p/-focus [l s] (set-focus l s))
+  p/Put
+  (p/-put [l v s] (set-put l v s))
+  p/Over
+  (p/-over [l v s] (set-over l v s)))
+
+;; * Reflection
+
+(defn reflect
+  [& ls]
+  (if (next ls)
+    (let [lenses (butlast ls)
+          target-lens (last ls)
+          focus-fn (fn [s] (map #(p/-focus % s) lenses))
+          put-fn (fn [s v] (p/-put target-lens v s))
+          over-fn (fn [s f] (p/-put target-lens
+                                    (apply f (focus-fn s))
+                                    s))]
+      (soliton.lens/lens focus-fn put-fn over-fn))
+    (first ls)))
+
+(defn <>
+  [f & ls]
+  (if (next ls)
+    (fn [s] (over (apply reflect ls) f s))
+    (fn [s] (over (first ls) f s))))
+
+(defn reflector
+  [& ls-and-f]
+  (let [ls (butlast ls-and-f)
+        f (last ls-and-f)]
+    (apply <> f ls)))
+
+(defmacro -<>
+  [x & forms]
+  (let [x ['->> x]]
+    (loop [x x, forms forms]
+      (if forms
+        (let [form (first forms)
+              wrapped (if (seq? form)
+                        (conj x (list (cons `<> form)))
+                        (conj x form))]
+          (recur wrapped (next forms)))
+        (seq x)))))

@@ -1,0 +1,7 @@
+.cpcache/*
+.nrepl-port
+out/*
+target/*
+.shadow-cljs/*
+.rebel_readline_history
+pom.xml
