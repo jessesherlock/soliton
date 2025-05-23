@@ -171,32 +171,32 @@
                       :charlie 1}
               :bravos 3}
 
-             (sut/over (sut/reflect :bravo [:alpha :bravo] :bravos) + test-map)
+             (sut/over (sut/reflector :bravo [:alpha :bravo] :bravos) + test-map)
 
-             ((sut/reflector :bravo [:alpha :bravo] :bravos +) test-map)
+             (sut/reflect [:bravo [:alpha :bravo] :bravos] + test-map)
 
              ((sut/<> + :bravo [:alpha :bravo] :bravos) test-map))))
 
     (testing "2 argument reflection, arg is [:alpha :charlie] and result in :charlie-incd"
-      (is (= {:bravo 1
-              :alpha {:bravo 2
-                      :charlie 1}
-              :charlie-incd 2}
+        (is (= {:bravo 1
+                :alpha {:bravo 2
+                        :charlie 1}
+                :charlie-incd 2}
 
-             (sut/over (sut/reflect [:alpha :charlie] :charlie-incd) inc test-map)
+               (sut/over (sut/reflector [:alpha :charlie] :charlie-incd) inc test-map)
 
-             ((sut/reflector [:alpha :charlie] :charlie-incd inc) test-map)
+               (sut/reflect [[:alpha :charlie] :charlie-incd] inc test-map)
 
-             ((sut/<> inc [:alpha :charlie] :charlie-incd) test-map))))
+               ((sut/<> inc [:alpha :charlie] :charlie-incd) test-map))))
 
     (testing "1 argument reflection, a normal non-reflection"
       (is (= {:bravo "1"
               :alpha {:bravo 2
                       :charlie 1}}
 
-             (sut/over (sut/reflect :bravo) str test-map)
+             (sut/over (sut/reflector :bravo) str test-map)
 
-             ((sut/reflector :bravo str) test-map)
+             (sut/reflect [:bravo] str test-map)
            
              ((sut/<> str :bravo) test-map))))))
 

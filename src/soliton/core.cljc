@@ -27,7 +27,7 @@
   (transduce (ergo/reductions focus-rf state)
              conj
              []
-             lens))
+             (if (vector? lens) lens [lens])))
 
 (extend clojure.lang.Keyword            ; cljs cljs.core/Keyword
   p/Focus
@@ -70,8 +70,8 @@
   {:-over (fn [l f s] s)})
 
 ;; reduce-focus, rec-put and rec-over are faster than other methods of
-;; evaluating lens seqs but can't get steps or work in non-standard execution contexts
-;; and it's not tail recursive (but how big are your lenses anyway)
+;; evaluating lens seqs but are opaque and
+;; it's not tail recursive (but how big are your lenses anyway?)
 ;; clojure's assoc-in/update-in work this way
 
 (defn reduce-focus
@@ -154,34 +154,36 @@
   p/Put
   (p/-put [l v s] (set-put l v s))
   p/Over
-  (p/-over [l v s] (set-over l v s)))
+  (p/-over [l f s] (set-over l f s)))
 
 ;; * Reflection
 
-(defn reflect
+(defrecord Reflector [sources target])
+
+(defn reflector
   [& ls]
   (if (next ls)
-    (let [lenses (butlast ls)
-          target-lens (last ls)
-          focus-fn (fn [s] (map #(p/-focus % s) lenses))
-          put-fn (fn [s v] (p/-put target-lens v s))
-          over-fn (fn [s f] (p/-put target-lens
-                                    (apply f (focus-fn s))
-                                    s))]
-      (soliton.lens/lens focus-fn put-fn over-fn))
+    (->Reflector (butlast ls) (last ls))
     (first ls)))
+
+(extend-type soliton.core.Reflector
+  p/Focus
+  (p/-focus [l s] (map #(p/-focus % s) (:sources l)))
+  p/Put
+  (p/-put [l v s] (p/-put (:target l) v s))
+  p/Over
+  (p/-over [l f s] (p/-put (:target l)
+                           (apply f (p/-focus l s))
+                           s)))
+(defn reflect
+  [lenses f s]
+  (if (next lenses)
+    (put (last lenses) (apply f (map #(focus % s) (butlast lenses))) s)
+    (over (first lenses) f s)))
 
 (defn <>
   [f & ls]
-  (if (next ls)
-    (fn [s] (over (apply reflect ls) f s))
-    (fn [s] (over (first ls) f s))))
-
-(defn reflector
-  [& ls-and-f]
-  (let [ls (butlast ls-and-f)
-        f (last ls-and-f)]
-    (apply <> f ls)))
+  (fn [s] (reflect ls f s)))
 
 (defmacro -<>
   [x & forms]
