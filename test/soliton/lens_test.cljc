@@ -139,8 +139,8 @@
 
     (is (= {:foo {:bar 1 :baz 2 :bam 3 :all-keys #{:baz :bam}}}
            (over [:foo (sut/dissoc :bar)]
-                     #(assoc % :all-keys (set (keys %)))
-                     {:foo {:bar 1, :baz 2, :bam 3}})))))
+                 #(assoc % :all-keys (set (keys %)))
+                 {:foo {:bar 1, :baz 2, :bam 3}})))))
 
 (deftest idx-test
   (is (= 5

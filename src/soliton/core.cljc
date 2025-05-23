@@ -9,14 +9,16 @@
   (p/-focus l s))
 
 (defn put
-  {:inline (fn [l v s] `(soliton.protocols/-put ~l ~v ~s))}
   [l v s]
-  (p/-put l v s))
+  (if (satisfies? p/Put l)
+    (p/-put l v s)
+    (p/default-put l v s)))
 
 (defn over
-  {:inline (fn [l f s] `(soliton.protocols/-over ~l ~f ~s))}
   [l f s]
-  (p/-over l f s))
+  (if (satisfies? p/Over l)
+    (p/-over l f s)
+    (p/default-over l f s)))
 
 (defn focus-rf
   [state lens]
@@ -41,9 +43,7 @@
   p/Focus
   {:-focus (fn [l s] (l s))}
   p/Put
-  {:-put (fn [l v s] (l s v))}
-  p/Over
-  {:-over p/default-over})
+  {:-put (fn [l v s] (l s v))})
 
 (extend clojure.lang.Keyword            ; cljs cljs.core/Keyword
   p/Focus
@@ -83,14 +83,14 @@
 (defn rec-put
   [[l & ls] v s]
   (if ls
-    (p/-put l (rec-put ls v (p/-focus l s)) s)
-    (p/-put l v s)))
+    (put l (rec-put ls v (focus l s)) s)
+    (put l v s)))
 
 (defn rec-over
   [[l & ls] f s]
   (if ls
-    (p/-put l (rec-over ls f (p/-focus l s)) s)
-    (p/-over l f s)))
+    (put l (rec-over ls f (focus l s)) s)
+    (over l f s)))
 
 (extend clojure.lang.Sequential
   p/Focus
@@ -99,6 +99,7 @@
   {:-put rec-put}
   p/Over
   {:-over rec-over})
+
 
 ;; ** fns for maps of lenses
 
@@ -116,17 +117,11 @@
              s
              lens-map))
 
-(defn map-over
-  [lens-map f s]
-  (p/default-over lens-map f s))
-
 (extend-type clojure.lang.APersistentMap
   p/Focus
   (p/-focus [l s] (map-focus l s))
   p/Put
-  (p/-put [l v s] (map-put l v s))
-  p/Over
-  (p/-over [l f s] (map-over l f s)))
+  (p/-put [l v s] (map-put l v s)))
 
 ;; ** fns for sets of lenses
 
@@ -170,11 +165,11 @@
   p/Focus
   (p/-focus [l s] (map #(p/-focus % s) (:sources l)))
   p/Put
-  (p/-put [l v s] (p/-put (:target l) v s))
+  (p/-put [l v s] (put (:target l) v s))
   p/Over
-  (p/-over [l f s] (p/-put (:target l)
-                           (apply f (p/-focus l s))
-                           s)))
+  (p/-over [l f s] (put (:target l)
+                        (apply f (p/-focus l s))
+                        s)))
 (defn reflect
   [lenses f s]
   (if (next lenses)

@@ -14,12 +14,10 @@
 ;; put in terms of over and vice versa
 
 (defn default-put
-  {:inline (fn [l v s] `(-over ~l (fn [_] ~v) ~s))} 
   [l v s]
   (-over l (fn [_] v) s))
 
 (defn default-over
-  {:inline (fn [l f s] `(-put ~l (~f (-focus ~l ~s)) ~s))}
   [l f s]
   (-put l (f (-focus l s)) s))
 
