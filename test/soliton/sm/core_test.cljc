@@ -1,6 +1,5 @@
 (ns soliton.sm.core-test
   (:require [clojure.test :refer [deftest is testing]]
-            [soliton.lens :as lens]
             [soliton.sm.core :as sut]))
 
 (deftest single-test
@@ -12,11 +11,11 @@
   (is (= :value
          (sut/focus [:foo 1] {:foo [:x :value]})))
 
-  (is (= {:foo [:x :value :y]}
-         (sut/put [:foo 1] :value {:foo [:x :x :y]})))
+  (is (= {:foo [:x :value :z]}
+         (sut/put [:foo 1] :value {:foo [:x :y :z]})))
 
-  (is (= {:foo [:x 43 :y]}
-         (sut/over [:foo 1] inc {:foo [:x 42 :y]}))))
+  (is (= {:foo [:x 43 :z]}
+         (sut/over [:foo 1] inc {:foo [:x 42 :z]}))))
 
 (deftest focus-steps-test
   (is (= [{:lenses [:foo 1], :state {:foo [:x :value]}}

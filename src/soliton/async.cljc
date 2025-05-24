@@ -16,8 +16,6 @@
       value
       (recur (pop lenses) steps value))))
 
-;; ;; - change aover to use get/put for all butlast and use aover proto for last source lens
-
 (declare aover)
 
 (defn non-compound-async-over

@@ -32,7 +32,7 @@
 
 ;; map context
 
-(defn ->map-context
+(defn ->sm-context
   [lenses operand state]
   ;; stacks for put or over, pass in an atomic put or over fn as operand
   (let [c {:lenses lenses
@@ -42,7 +42,7 @@
           (assoc :operand operand))
       c)))
 
-(defn map-context-focus-step
+(defn focus-step
   [c l ls state]
   (-> (if (:operand c)
       (update c :stack #(conj % [l state]))
@@ -50,7 +50,7 @@
       (assoc :lenses ls)
       (assoc :state (focus l state))))
 
-(defn map-context-operate-step
+(defn operate-step
   [c put-fn l operator state]
   (let [operand (:operand c)
         c (dissoc c :lenses :operand)]
@@ -60,7 +60,7 @@
       ;; a focus
       (put-fn :state (focus l state) c))))
 
-(defn map-context-stitch-step
+(defn stitch-step
   [c put-fn stack state]
   (if-let [frame (peek stack)]
     (->> (assoc c :stack (pop stack))
@@ -69,75 +69,75 @@
                          state
                          (second frame))))))
 
-(defn map-context-step
+(defn sm-step
   [operator put-fn]
-  (fn map-stepper
+  (fn stepper
     [c]
     (let [[l & ls] (:lenses c)
           state (:state c)]
       (if ls
         ;; still focusing in
-        (map-context-focus-step c l ls state)
+        (focus-step c l ls state)
         (if l
           ;; one lens left, so operate
-          (map-context-operate-step c put-fn l operator state)
+          (operate-step c put-fn l operator state)
           ;; no lenses, stitch the stack if exists (put or over) or done (focus)
           (if-let [stack (:stack c)]
-            (map-context-stitch-step c put-fn stack state)))))))
+            (stitch-step c put-fn stack state)))))))
 
 (defn map-op
   [l s operator operand rf init]
   (->> s
-       (->map-context l operand)
-       (ergo/produce (comp (ergo/iterate (map-context-step operator put))
+       (->sm-context l operand)
+       (ergo/produce (comp (ergo/iterate (sm-step operator put))
                           ergo/til-nil)
                     rf
                     init)))
 
-(defn context-focus
+(defn sm-focus
   [l s]
   (:state (map-op l s nil nil ergo/last nil)))
 
-(defn context-focus-steps
+(defn sm-focus-steps
   [l s]
   (map-op l s nil nil conj []))
 
-(defn context-put
+(defn sm-put
   [l v s]
   (:state (map-op l s put v ergo/last nil)))
 
-(defn context-put-steps
+(defn sm-put-steps
   [l v s]
   (map-op l s put v conj []))
 
-(defn context-over
+(defn sm-over
   [l f s]
   (:state (map-op l s over f ergo/last nil)))
 
-(defn context-over-steps
+(defn sm-over-steps
   [l f s]
   (map-op l s over f conj []))
 
 (extend-type clojure.lang.PersistentVector
   p/Focus
-  (p/-focus [l s] (context-focus l s))
+  (p/-focus [l s] (sm-focus l s))
   p/Put
-  (p/-put [l v s] (context-put l v s))
+  (p/-put [l v s] (sm-put l v s))
   p/Over
-  (p/-over [l f s] (context-over l f s)))
+  (p/-over [l f s] (sm-over l f s)))
 
 (defn focus-steps
   [l s]
   (-> (if (sequential? l) l [l])
-      (context-focus-steps s)))
+      (sm-focus-steps s)))
 
 (defn put-steps
   [l v s]
   (-> (if (sequential? l) l [l])
-      (context-put-steps v s)))
+      (sm-put-steps v s)))
 
 (defn over-steps
   [l f s]
   (-> (if (sequential? l) l [l])
-      (context-over-steps f s)))
+      (sm-over-steps f s)))
 

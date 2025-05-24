@@ -1,7 +1,7 @@
 (ns soliton.core-test
   (:require [clojure.test :refer [deftest is testing]]
-            [soliton.core :as sut]
-            [soliton.lens :as lens]))
+            [soliton.lens :as lens]
+            [soliton.core :as sut]))
 
 (set! *warn-on-reflection* true)
 

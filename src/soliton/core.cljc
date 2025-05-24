@@ -159,7 +159,7 @@
   [& ls]
   (if (next ls)
     (->Reflector (butlast ls) (last ls))
-    (first ls)))
+    (->Reflector ls (first ls))))
 
 (extend-type soliton.core.Reflector
   p/Focus
