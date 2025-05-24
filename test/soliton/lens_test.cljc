@@ -44,6 +44,9 @@
     (is (= #inst "2007-10-18"
            (over as-millis #(+ % 86400000) #inst "2007-10-17")))))
 
+(deftest const-test
+  (is (= 7 (focus (sut/const 7) :x))))
+
 (deftest key-lens-test
   (let [foo (sut/key "foo")
         m {"foo" :foo
@@ -67,7 +70,8 @@
     (is (= 100 (put l 100 2)))
     (is (= 3 (put l 100 3)))
     (is (= 3 (over l inc 2)))
-    (is (= 3 (put l inc 3)))))
+    (is (= 1 (over l (fnil inc 1000) 1)))))
+
 
 (deftest select-keys-test
   (let [l (sut/select-keys [:alpha :bravo])

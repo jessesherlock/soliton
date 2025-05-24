@@ -1,6 +1,6 @@
 (ns soliton.core-test
   (:require [clojure.test :refer [deftest is testing]]
-            [soliton.lens :as lens]
+            [soliton.lens :refer [const] :as lens]
             [soliton.core :as sut]))
 
 (set! *warn-on-reflection* true)
@@ -220,9 +220,11 @@
                     :charlie 1}
             :bravos 3
             :total 7
-            :total-str "7"}
+            :total-str "7"
+            :total-plus-10 17}
 
            (sut/-<> test-map
              (+ :bravo [:alpha :bravo] :bravos)
              (+ :bravo [:alpha :bravo] [:alpha :charlie] :bravos :total)
+             (+ :total (const 10) :total-plus-10)
              (str :total :total-str))))))

@@ -10,15 +10,11 @@
 
 (defn put
   [l v s]
-  (if (satisfies? p/Put l)
-    (p/-put l v s)
-    (p/default-put l v s)))
+  (p/-put l v s))
 
 (defn over
   [l f s]
-  (if (satisfies? p/Over l)
-    (p/-over l f s)
-    (p/default-over l f s)))
+  (p/-over l f s))
 
 (defn focus-rf
   [state lens]
@@ -43,7 +39,9 @@
   p/Focus
   {:-focus (fn [l s] (l s))}
   p/Put
-  {:-put (fn [l v s] (l s v))})
+  {:-put (fn [l v s] (l s v))}
+  p/Over
+  {:-over p/default-over})
 
 (extend clojure.lang.Keyword            ; cljs cljs.core/Keyword
   p/Focus
@@ -117,11 +115,13 @@
              s
              lens-map))
 
-(extend-type clojure.lang.APersistentMap
+(extend clojure.lang.APersistentMap
   p/Focus
-  (p/-focus [l s] (map-focus l s))
+  {:-focus map-focus}
   p/Put
-  (p/-put [l v s] (map-put l v s)))
+  {:-put map-put}
+  p/Over
+  {:-over p/default-over})
 
 ;; ** fns for sets of lenses
 

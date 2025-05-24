@@ -1,7 +1,8 @@
 (ns soliton.lens
   (:refer-clojure :exclude [dissoc first key merge next pop peek rest select-keys])
   (:require [clojure.core :as c]
-            [soliton.protocols :as p]))
+            [soliton.protocols :as p])
+  (:import [clojure.lang IDeref]))
 
 (defn lens
   "create a lens from 2 or 3 separate functions"
@@ -40,6 +41,28 @@
     ([s] (a->b s))
     ([_ v] (b->a v))))
 
+;; * useful lenses
+
+(defn id
+  "Identity lens"
+  {:inline (fn
+             ([s] `~s)
+             ([s v] `~v))
+   :static true}
+  ([s] s)
+  ([s v] v))
+
+(deftype Const [val]
+  IDeref
+  (deref [_] val)
+  p/Focus
+  (-focus [_ _] val))
+
+(defn const
+  "Read only lens that is always a constant value"
+  [constant]
+  (->Const constant))
+
 (defn key
   "key into associative structures
   (keywords can be used on their own, other types of keys cannot)"
@@ -47,16 +70,6 @@
   (fn key-lens
     ([s] (get s k))
     ([s v] (assoc s k v))))
-
-;; * useful lenses
-
-(defn id
-  {:inline (fn
-             ([s] `~s)
-             ([s v] `~v))
-   :static true}
-  ([s] s)
-  ([s v] v))
 
 (defn passes
   "a lens that only focuses if it passes the predicate
