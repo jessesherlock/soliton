@@ -1,0 +1,365 @@
+* Soliton
+
+soliton [sol-i-ton]; noun; a solitary wave (as in a gaseous plasma) that propagates with little loss of energy and retains its shape and speed after colliding with another such wave
+
+Soliton is a Clojure/Clojurescript lens library that covers well behaved lenses as well as useful lens-adjacent optics.
+
+** Install
+
+~com.jessesherlock/soliton {:mvn/version "0.1.3"}~ / ~[com.jessesherlock/soliton "0.1.3"]~
+
+** Basic lens operations
+
+The basic lens operations are ~focus~, ~put~ and ~over~ 
+
+#+BEGIN_SRC clojure
+  (require '[soliton.core :refer [focus put over]])
+
+  (focus :foo {:foo 42})
+  ; 42
+
+  (put :foo 42 {:foo 0})
+  ; {:foo 42}
+  
+  (over :foo inc {:foo 42})
+  ; {:foo 43}
+#+END_SRC
+
+Bare keywords as well as longs and functions are themselves lenses
+
+#+BEGIN_SRC clojure
+  (focus 1 [10 11 12])
+  ; 11
+
+  (put 1 42 [10 11 12])
+  ; [10 42 12]
+
+  (over 1 inc [10 11 12])
+  ; [10 12 12]
+
+  (defn keyword-namespace
+  ; single arity getter
+  ([k] (namespace k))
+  ; two arity setter
+  ([k n] (keyword n (name k))))
+
+  (focus keyword-namespace :foo/bar)
+  ; "foo"
+
+  (put keyword-namespace "bam" :foo/bar)
+  ; :bam/bar
+  
+  (over keyword-namespace clojure.string/capitalize :foo/bar)
+  ; :Foo/bar
+#+END_SRC
+
+Lenses are composed by putting them in a vector
+
+#+BEGIN_SRC clojure
+  (focus [:foo 1 :bar] {:foo [:x {:bar :value, :bam 42} :y]})
+  ; :value
+
+  (put [:foo 1 :bar] :value {:foo [:x {:bar nil, :bam 42} :y]})
+  ; {:foo [:x {:bar :value, :bam 42} :y]}
+
+  (over [:foo 1 :bam] inc {:foo [:x {:bar :value :bam 42} :y]})
+  ; {:foo [:x {:bar :value :bam 43} :y]}
+#+END_SRC clojure
+
+~soliton.lens~ has a number of useful lenses and lens constructors. Including ~fmap~ to construct a lens from a getter and an update fn, ~iso~ for very useful two way conversion lenses, map, vector, stack and list related lenses.
+
+** Odd lenses
+
+Soliton also includes very odd lens-type things that end up being frequently useful. A vector of lenses are composed lenses, focused on in sequence. Maps and Sets of lenses are also available.
+
+*** Lens Maps
+
+A map of keys to lenses:
+- focuses by returning a map of keys to that lens' results
+- puts takes a map of key to replacement-value as it's value and puts each replacement-value in the corresponding location of the state
+- over does a focus, passes the resulting map to the function which should return a map of keys to values which is put into the state
+
+#+BEGIN_SRC clojure
+(focus {:foo :bar
+        :alpha [:nums 1]}
+       {:bar 7
+        :nums [1 2 3]})
+; {:foo 7, :alpha 2}
+
+(put {:foo :bar
+      :alpha [:nums 1]}
+     {:foo 8
+      :alpha 42}
+     {:bar 7
+      :nums [1 2 3]})
+; {:bar 8, :nums [1 42 3]}
+
+(over {:foo :bar
+       :alpha [:nums 1]}
+      (fn [m] {:foo (dec (:foo m))
+               :alpha (conj (:alpha m) 4)})
+      {:bar 7
+       :nums [1 2 3]}
+; {:bar 6, :nums [1 2 3 4]}
+#+END_SRC clojure
+
+*** Lens Sets
+
+A set of lenses:
+- focuses by returning a set of results
+- puts the same value at the location for each lens in the set
+- over runs the function at the location for each lens in the set
+
+
+** Reflections
+
+In practice applying functions to a subset of a data structure rarely involves functions that take one argument. If we relax the well-behavedness of our optics a bit (ok, a lot?) we get reflections (my own term, I'm not aware of any other name or anyone else using lenses this way)
+
+Reflect takes one lens per fn argument and one lens for the location to store the result of function application
+
+#+BEGIN_SRC clojure
+  (reflect
+   [:subtotal [:taxes :tax-total] [:fees :fee-total] :grand-total]
+   +
+   {:items [...]
+    :subtotal 100
+    :taxes {:rate 0.05 :tax-total 5}
+    :fees {:fee-list [...] :fee-total 15}})
+  ; {:items [...]
+  ;  :subtotal 100
+  ;  :taxes {:rate 0.05 :tax-total 5}
+  ;  :fees {:fee-list [...] :fee-total 15}
+  ;  :grand-total 120}
+#+END_SRC clojure
+
+You can also create a "reflector" which is also a lens
+
+#+BEGIN_SRC clojure
+  (def cart {:cart {:items [:a :b :c]
+	  	    :subtotal 100
+		    :taxes {:rate 0.05 :tax-total 5}
+		    :fees {:fee-list [:d :e :f] :fee-total 15}}}
+  (def totals (reflector :subtotal
+                         [:taxes :tax-total]
+			 [:fees :fee-total]
+			 :grand-total))
+			 
+  (focus totals cart)
+  ; (100 5 15)
+  
+  (put totals 42 cart)
+  ; {:cart 
+  ;   {:items [:a :b :c]
+  ;    :subtotal 100
+  ;    :taxes {:rate 0.05 :tax-total 5}
+  ;    :fees {:fee-list [:d :e :f] :fee-total 15}
+  ;    :grand-total 42}}
+  
+  (over [:cart totals] + cart)
+  ; {:cart 
+  ;   {:items [:a :b :c]
+  ;    :subtotal 100
+  ;    :taxes {:rate 0.05 :tax-total 5}
+  ;    :fees {:fee-list [:d :e :f] :fee-total 15}
+  ;    :grand-total 120}}
+#+END_SRC clojure
+
+You can also use ~soliton.core/<>~ to create a function with the lenses and function bound, taking only the state. For convenience there is also the ~soliton.core/-<>~ threading macro
+
+#+BEGIN_SRC clojure
+  (require '[soliton.lens :as l])
+  
+  ((<> + :a :b :c :total) {:a 1 :b 2 :c 3 :d 4 :e 5}) 
+  ; {:a 1 :b 2 :c 3 :d 4 :e 5 :total 6}
+
+  (def test-map {:bravo 1
+                 :alpha {:bravo 2
+	                 :charlie 1}})
+  (-<> test-map
+    (+ :bravo [:alpha :bravo] :bravos-total)
+    (+ :bravos-total (l/const 10) :total-plus-10)
+    (str :total-plus-10 :total-string))
+    
+  ; is equivalent to:
+  
+  (->> test-map
+       ((<> + :bravo [:alpha :bravo] :bravos-total))
+       ((<> + :bravos-total (l/const 10) :total-plus-10))
+       ((<> str :total-plus-10 :total-string)))
+  ;{:bravo 1
+  ; :alpha {:bravo 2
+  ;         :charlie 1}
+  ; :bravos-total 3
+  ; :total-str "13"
+  ; :total-plus-10 13}
+  
+  ; or, using -<>
+#+END_SRC clojure
+
+*** An aside: The original problem
+
+We've just seen the original goal of both Soliton and the Ergo libraries.
+
+I frequently have a map of state, a request or response in a web backend, a state map from the state atom in a re-frame app, or a context map in general.
+
+When transforming that map I end up with expected functions like
+
+#+BEGIN_SRC clojure
+(defn actually-calculate-the-thing
+  [user-id token arg-1 arg-2]
+  ;; ... business logic using those 4 arguments ...
+  42)
+#+END_SRC clojure
+
+as well as wrapper functions that are aware of the shape of the state map
+
+#+BEGIN_SRC clojure
+(defn calculate-the-thing-wrapper
+  [context]
+  (let [user-id (get-in context [:user :id])
+        token (:token context)
+	arg-1 (get-in context [:foo :bar :baz])
+	arg-2 (str (:arg2 context))
+	result (actually-calculate-the-thing user-id token arg-1 arg-2)]
+    (-> context
+        (assoc :the-thing result)
+	do-updates) 
+#+END_SRC clojure
+
+and a top level threading of the context of all these wrapper functions
+
+#+BEGIN_SRC clojure
+(-> context
+    calculate-the-thing-wrapper
+    calculate-the-other-thing-wrapper
+    save-changes-wrapper
+    notify-others-wrapper)
+#+END_SRC clojure
+
+writing all of these wrapper functions is a waste of time and the source of a significant percentage of the bugs. We have state and functions to run over part of this state, we need lenses.
+
+It is much nicer to have none (or almost none) of these wrapper functions and just use lenses
+
+#+BEGIN_SRC clojure
+(-<> context
+     (actually-calculate-the-thing [:user :id] :token arg1-lens :arg2 :the-thing)
+     (actually-calculate-the-other-thing (l/const 42) :foo :bar :the-other-thing)
+     (save-changes-wrapper l/id) ; for really complex logic I'd still use a wrapper fn
+     (notify-others :token arg1-lens :notify-results)
+#+END_SRC clojure
+
+This approach has made it easier for me to keep my state contained, the rest of my codebase mostly pure functions, changes to the state data structure shape is easier, making the state shape polymorphic becomes possible. And I don't have to write a million stupid wrapper functions.
+
+However, in practice a lot of these business logic functions return a core async channel. Which brings us to ...
+
+
+** Async
+
+There is one async use case where the normal lens operators work technically correctly but don't do what we want. When your applied function returns a value asynchronously.
+
+What we would often prefer is an async response of a data structure without any channels as nested values.
+
+#+BEGIN_SRC clojure
+(require '[clojure.core.async :as a])
+(require '[soliton.async :refer [aover]])
+
+; a mock of our hypothetical async http api request function, you get the point
+(defn get-api-result [arg] (a/go {:result 1234}))
+
+; what happens
+(over [:foo :bar] get-api-result {:foo {:bar :arg}})
+; {:foo {:bar (a/to-chan! [{:result 1234}])}}
+
+; what we would often prefer
+(a/<! (aover [:foo :bar] get-api-result {:foo {:bar :arg}}))
+; {:foo {:bar {:result 1234}}})
+
+#+END_SRC clojure
+
+Normal lenses and reflectors work with ~aover~, reflectors implement the Async-Over protocol used by ~aover~, there is also an ~areflect~ function to reflect over an async function directly
+
+*** Lifting
+
+An alternative to deal with a channel or channels nested in a nested map is to use the ~lift~ or ~multi-lift~ functions in ~soliton.async~
+
+#+BEGIN_SRC clojure
+(require '[soliton.async :refer [lift multi-lift multi-put]])
+
+(a/<! (lift [:foo :bar] {:foo {:bar (a/to-chan! [5])}}))
+; {:foo {:bar 5}}
+#+END_SRC clojure
+
+If we have multiple locations with channels we can use ~multi-lift~
+
+#+BEGIN_SRC clojure
+(a/<! (multi-lift [[:foo :bar]
+                   [:alpha :bravo :charlie]
+		   :other]
+                  {:foo {:bar (a/to-chan! [:fb])}
+		   :key :value
+		   :alpha {:bravo {:charlie (a/to-chan! [:abc])}}
+		   :other (a/to-chan! [:other])})) 
+#+END_SRC clojure
+
+~multi-lift~ uses ~clojure.core.async/alts!~ so if you have multiple async operations to perform on some state, it may be faster to use ~soliton.core/over~ or ~soliton.core/-<>~ and then use multi-lift to do the work in parallel as opposed to threading the state through ~soliton.async/aover~  or using ~soliton.async/-<>~ to do it in sequence.
+
+** Soliton.SM - The state machine version
+
+The ~soliton.sm~ namespace has an alternate implementation of focus/put/over that uses a state machine model to process composed lenses instead of recursion.
+
+It creates a map with the keys :lenses, :state, :stack, :operand and uses ~ergo~ to iterate the a step function. A bit more complexity but less opaque and quite useful for debugging.
+
+~focus-steps~, ~put-steps~ and ~over-steps~ return a vector containing each step of the processing, useful for debugging complicated compositions of lenses.
+
+*** ~soliton.sm.async~
+
+The state machine implementation is quite useful for the async cases. ~focus~, ~put~ and ~over~ all return the result in a core.async channel. And ~focus-steps~, ~put-steps~ and ~over-steps~ all return one channel with each step on it.
+
+With ~over~ the function argument may return a core async channel or may not and will work the same, similar with the value for ~put~.
+
+For all three the state may or may not be in a core async channel, and any of the lenses may return a core async channel. This means threading state through multiple uses of ~over~ or use of the ~soliton.sm.async-<>~ macro can mix the use of normal and async functions without the user having to worry about it. No more function coloring!
+
+#+BEGIN_SRC clojure
+(require '[soliton.sm.async :as ssma])
+
+; some mock fns, some normal, some returning a channel
+(defn get-context [] (a/to-chan! [{}]))
+(defn initialize [context] (assoc context :init true))
+(defn get-db-handle [creds address] (a/go :handle))
+(defn query [creds handle query] (a/go :query-results))
+(defn render [results screen] (assoc context :rendered true))
+
+(a/<! (ssma/-<> (get-context)
+                (initialize l/id)
+	        (get-db-handle [:db :creds] (l/const db-address) [:db :db-handle])
+	        (query [:db :creds] [:db :db-handle] :query :query-results)
+	        (render :query-results :screen)
+#+END_SRC clojure
+
+** Maintenance status
+
+This library is being used for real world stuff. It is supported and will continue to be supported for the foreseeable future. Please file bugs, use it if you need it, and expect me to maintain this library. This is true as of *2025-05-24* and I will update that date semi regularly so you know this isn't abandoned, the goal is to *finish* this library and make no more changes and these days people often read that as being abandoned, hence this message.
+
+** Contributing
+
+Running the clj tests
+
+#+BEGIN_SRC bash
+  clj -A:test -M -m koacha.runner
+  
+  clj -A:test -M -m koacha.runner --watch
+#+END_SRC
+
+Running the cljs tests
+
+#+BEGIN_SRC bash
+  clj -A:shadow watch test
+#+END_SRC
+
+Then open the listed webpage (the one after "HTTP server available at") to see the test results
+
+Fire up an nrepl server with rebel-readline, the tests, shadow and criterium in the classpath
+
+#+BEGIN_SRC bash
+  clj -A:repl
+#+END_SRC

@@ -4,13 +4,13 @@
   com.jessesherlock/ergo {:mvn/version "0.1.3-alpha"}}
  :paths ["src"]
  :aliases
-{:test {:extra-deps {net.r4s6/test-async {:mvn/version "0.2.0"}
-                     thheller/shadow-cljs {:mvn/version "2.22.2"}
-                     lambdaisland/kaocha {:mvn/version "1.87.1366"}
+{:test {:extra-deps {net.r4s6/test-async {:mvn/version "0.3.0"}
+                     thheller/shadow-cljs {:mvn/version "3.1.4"}
+                     lambdaisland/kaocha {:mvn/version "1.91.1392"}
                      lambdaisland/kaocha-cloverage {:mvn/version "1.1.89"}}
         :extra-paths ["test"]}
- :shadow {:extra-deps {net.r4s6/test-async {:mvn/version "0.2.0"}
-                       thheller/shadow-cljs {:mvn/version "2.22.2"}}
+ :shadow {:extra-deps {net.r4s6/test-async {:mvn/version "0.3.0"}
+                       thheller/shadow-cljs {:mvn/version "3.1.4"}}
           :extra-paths ["test"]
           :main-opts ["-m" "shadow.cljs.devtools.cli"]}
  :repl {:extra-deps {cider/cider-nrepl {:mvn/version "0.55.7"}
@@ -18,7 +18,7 @@
                      criterium/criterium {:mvn/version "0.4.6"}
                      net.r4s6/test-async {:mvn/version "0.3.0"}
                      nrepl/nrepl {:mvn/version "1.3.1"}
-                     thheller/shadow-cljs {:mvn/version "3.1.3"}}
+                     thheller/shadow-cljs {:mvn/version "3.1.4"}}
         :extra-paths ["test"]
         :main-opts ["-m" "nrepl.cmdline"
                     "--middleware" "[cider.nrepl/cider-middleware]"

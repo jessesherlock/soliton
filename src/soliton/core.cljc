@@ -43,14 +43,6 @@
   p/Over
   {:-over p/default-over})
 
-(extend clojure.lang.Keyword            ; cljs cljs.core/Keyword
-  p/Focus
-  {:-focus (fn [l s] (get s l))}
-  p/Put
-  {:-put (fn [l v s] (assoc s l v))}
-  p/Over
-  {:-over (fn [l f s] (update s l f))})
-
 (extend java.lang.Long                  ; cljs number
   p/Focus
   {:-focus soliton.lens/filled-focus}

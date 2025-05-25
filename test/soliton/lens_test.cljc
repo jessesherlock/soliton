@@ -72,7 +72,6 @@
     (is (= 3 (over l inc 2)))
     (is (= 1 (over l (fnil inc 1000) 1)))))
 
-
 (deftest select-keys-test
   (let [l (sut/select-keys [:alpha :bravo])
         test-map {:alpha :a, :bravo :b, :charlie :c, :delta :d}]
