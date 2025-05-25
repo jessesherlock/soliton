@@ -1,8 +1,9 @@
 (ns soliton.lens
   (:refer-clojure :exclude [dissoc first key merge next pop peek rest select-keys])
   (:require [clojure.core :as c]
-            [soliton.protocols :as p])
-  (:import [clojure.lang IDeref]))
+            [soliton.protocols :as p]
+            #?(:cljs [cljs.core :refer [IDeref]]))
+  #?(:clj (:import [clojure.lang IDeref])))
 
 (defn lens
   "create a lens from 2 or 3 separate functions"
@@ -54,7 +55,8 @@
 
 (deftype Const [val]
   IDeref
-  (deref [_] val)
+  #?(:clj (deref [_] val)
+     :cljs (-deref [_] val))
   p/Focus
   (-focus [_ _] val))
 
@@ -123,8 +125,10 @@
 (defn idx
   [i]
   (fn idx-lens
-    ([s] (.nth ^clojure.lang.Indexed s i))
-    ([s v] (.assocN ^clojure.lang.IPersistentVector s i v))))
+    ([s] #?(:clj (.nth ^clojure.lang.Indexed s i)
+            :cljs (nth s i)))
+    ([s v] #?(:clj (.assocN ^clojure.lang.IPersistentVector s i v)
+              :cljs (assoc s i v)))))
 
 (defn fill
   [v i]
@@ -143,11 +147,11 @@
   [i]
   (reify
     p/Focus
-    (-focus [_ s] (filled-focus s))
+    (-focus [_ s] (filled-focus i s))
     p/Put
-    (-put [_ v s] (filled-put s v))
+    (-put [_ v s] (filled-put i v s))
     p/Over
-    (-over [_ f s] (filled-over s f))))
+    (-over [_ f s] (filled-over i f s))))
 
 
 (defn- bound [mn n mx]

@@ -2,9 +2,10 @@
   (:require [clojure.test :refer [deftest is]]
             [soliton.core :refer [focus put over]]
             [soliton.lens :as sut])
-  (:import [java.util Date]))
+  #?(:clj (:import [java.util Date])))
 
-(set! *warn-on-reflection* true)
+#?(:clj (set! *warn-on-reflection* true)
+   :cljs (set! *warn-on-infer* true))
 
 (deftest constructors-test
   (let [test-map {:foo 1}
@@ -32,8 +33,11 @@
            (over l-fmap inc test-map)))))
 
 (deftest iso-test
-  (let [millis->date #(Date. (long %))
-        as-millis (sut/iso #(.getTime ^Date %) #(Date. (long %)))]    
+  (let [millis->date (fn [millis] #?(:clj (Date. (long millis))
+                                     :cljs (js/Date. (long millis))))
+        date->millis (fn [date] #?(:clj (.getTime ^java.util.Date date)
+                                   :cljs (.getTime ^Date date)))
+        as-millis (sut/iso date->millis millis->date)]
 
     (is (= (long 1192579200000)
            (focus as-millis #inst "2007-10-17")))
@@ -152,11 +156,30 @@
   (is (= [1 2 3]
          (put (sut/idx 1) 2 [1 nil 3])))
 
-  (is (thrown? IndexOutOfBoundsException
-               (focus (sut/idx 2) [1])))
+  (is #?(:clj (thrown? IndexOutOfBoundsException (focus (sut/idx 2) [1]))
+         :cljs (thrown-with-msg? js/Error #"No item \d in vector of length \d"
+                                 (focus (sut/idx 2) [1]))))
+  (is #?(:clj (thrown? IndexOutOfBoundsException (put (sut/idx 2) 5 [4]))
+         :cljs (thrown-with-msg? js/Error #"Index \d out of bounds"
+                                 (put (sut/idx 2) 5 [4])))))
 
-  (is (thrown? IndexOutOfBoundsException
-               (put (sut/idx 2) 5 [4]))))
+(deftest filled-idx-test
+  (is (= :value
+         (focus (sut/filled-idx 2) [:x :x :value :y])))
+
+  (is (= [:x :x :value :y]
+         (put (sut/filled-idx 2) :value [:x :x :x :y])))
+
+  (is (= [nil nil :x]
+         (put (sut/filled-idx 2) :x [])))
+
+  (is (= [:x :x 43 :y]
+         (over (sut/filled-idx 2) inc [:x :x 42 :y])))
+
+  (is (= [1]
+         (over (sut/filled-idx 0) (fnil inc 0) []))))
+
+(over (sut/filled-idx 2) inc [:x :x 42 :y])
 
 (deftest slice-test
   (is (= [2 3 4]

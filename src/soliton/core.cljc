@@ -1,7 +1,8 @@
 (ns soliton.core
   (:require [ergo.core :as ergo]
             [soliton.protocols :as p]
-            [soliton.lens]))
+            [soliton.lens])
+  #?(:cljs (:require-macros [soliton.core :refer [-<>]])))
 
 (defn focus
   {:inline (fn [l s] `(soliton.protocols/-focus ~l ~s))}
@@ -27,37 +28,46 @@
              []
              (if (vector? lens) lens [lens])))
 
-(extend clojure.lang.Keyword            ; cljs cljs.core/Keyword
+(extend-type #?(:clj clojure.lang.Keyword :cljs cljs.core/Keyword)
   p/Focus
-  {:-focus (fn [l s] (get s l))}
+  (-focus [l s] (get s l))
   p/Put
-  {:-put (fn [l v s] (assoc s l v))}
+  (-put [l v s] (assoc s l v))
   p/Over
-  {:-over (fn [l f s] (update s l f))})
+  (-over [l f s] (update s l f)))
 
-(extend clojure.lang.Fn                 ; cljs function
+(extend-type #?(:clj clojure.lang.Fn :cljs function)
   p/Focus
-  {:-focus (fn [l s] (l s))}
+  (-focus [l s] (l s))
   p/Put
-  {:-put (fn [l v s] (l s v))}
+  (-put [l v s] (l s v))
   p/Over
-  {:-over p/default-over})
+  (-over [l f s] (p/default-over l f s)))
 
-(extend java.lang.Long                  ; cljs number
+(extend-type #?(:clj java.lang.Long :cljs number)
   p/Focus
-  {:-focus soliton.lens/filled-focus}
+  (-focus [l s] (soliton.lens/filled-focus l s))
   p/Put
-  {:-put soliton.lens/filled-put}
+  (-put [l v s] (soliton.lens/filled-put l v s))
   p/Over
-  {:-over soliton.lens/filled-over})
+  (-over [l f s] (soliton.lens/filled-over l f s)))
 
-(extend nil
+#?(:clj
+(extend-type java.lang.Integer
   p/Focus
-  {:-focus (fn [l s] nil)}
+  (-focus [l s] (soliton.lens/filled-focus l s))
   p/Put
-  {:-put (fn [l v s] s)}
+  (-put [l v s] (soliton.lens/filled-put l v s))
   p/Over
-  {:-over (fn [l f s] s)})
+  (-over [l f s] (soliton.lens/filled-over l f s))))
+
+(extend-type nil
+  p/Focus
+  (-focus [l s] nil)
+  p/Put
+  (-put [l v s] s)
+  p/Over
+  (-over [l f s] s))
 
 ;; reduce-focus, rec-put and rec-over are faster than other methods of
 ;; evaluating lens seqs but are opaque and
@@ -66,7 +76,7 @@
 
 (defn reduce-focus
   [lens state]
-  (if (sequential? lens)
+  (if (vector? lens)
     (reduce focus-rf state lens)
     (p/-focus lens state)))
 
@@ -82,14 +92,23 @@
     (put l (rec-over ls f (focus l s)) s)
     (over l f s)))
 
-(extend clojure.lang.Sequential
+(extend-type #?(:clj clojure.lang.IPersistentVector
+                :cljs cljs.core/PersistentVector)
   p/Focus
-  {:-focus reduce-focus}
+  (-focus [l s] (reduce-focus l s))
   p/Put
-  {:-put rec-put}
+  (-put [l v s] (rec-put l v s))
   p/Over
-  {:-over rec-over})
+  (-over [l f s] (rec-over l f s)))
 
+#?(:cljs
+(extend-type cljs.core/Subvec
+  p/Focus
+  (-focus [l s] (reduce-focus l s))
+  p/Put
+  (-put [l v s] (rec-put l v s))
+  p/Over
+  (-over [l f s] (rec-over l f s))))
 
 ;; ** fns for maps of lenses
 
@@ -107,19 +126,39 @@
              s
              lens-map))
 
-(extend clojure.lang.APersistentMap
+(extend-type #?(:clj clojure.lang.IPersistentMap
+                :cljs cljs.core/PersistentArrayMap)
   p/Focus
-  {:-focus map-focus}
+  (-focus [l s] (map-focus l s))
   p/Put
-  {:-put map-put}
+  (-put [l v s] (map-put l v s))
   p/Over
-  {:-over p/default-over})
+  (-over [l f s] (p/default-over l f s)))
+
+#?(:cljs
+(extend-type cljs.core/PersistentHashMap
+  p/Focus
+  (-focus [l s] (map-focus l s))
+  p/Put
+  (-put [l v s] (map-put l v s))
+  p/Over
+  (-over [l f s] (p/default-over l f s))))
+
+#?(:cljs
+   (extend-type cljs.core/PersistentTreeMap
+     p/Focus
+     (-focus [l s] (map-focus l s))
+     p/Put
+     (-put [l v s] (map-put l v s))
+     p/Over
+     (-over [l f s] (p/default-over l f s)))) 
+
 
 ;; ** fns for sets of lenses
 
 (defn set-focus
   [lens-set s]
-  (into #{} (map #(p/-focus % s) lens-set)))
+  (into (empty lens-set) (map #(p/-focus % s) lens-set)))
 
 (defn set-put
   [lens-set v s]
@@ -135,13 +174,23 @@
       (recur lenses f (p/-over lens f s))
       (p/-over lens f s))))
 
-(extend-type clojure.lang.PersistentHashSet
+(extend-type #?(:clj clojure.lang.IPersistentSet
+                :cljs cljs.core/PersistentHashSet)
   p/Focus
   (p/-focus [l s] (set-focus l s))
   p/Put
   (p/-put [l v s] (set-put l v s))
   p/Over
   (p/-over [l f s] (set-over l f s)))
+
+#?(:cljs
+(extend-type cljs.core/PersistentTreeSet
+  p/Focus
+  (p/-focus [l s] (set-focus l s))
+  p/Put
+  (p/-put [l v s] (set-put l v s))
+  p/Over
+  (p/-over [l f s] (set-over l f s))))
 
 ;; * Reflection
 

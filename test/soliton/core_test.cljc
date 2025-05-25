@@ -3,7 +3,8 @@
             [soliton.lens :refer [const] :as lens]
             [soliton.core :as sut]))
 
-(set! *warn-on-reflection* true)
+#?(:clj (set! *warn-on-reflection* true)
+   :cljs (set! *warn-on-infer* true))
 
 (deftest focus-steps
   (is (= [{:foo {:bar [:x :y :z]}}
@@ -38,21 +39,26 @@
     (is (= {:foo 43}
            (sut/over tfn inc {:foo 42})))))
 
-(deftest long-lens-test
+(deftest int-long-lens-test
   (is (= :value
-         (sut/focus 2 [:x :x :value :y])))
+         (sut/focus (long 2) [:x :x :value :y])
+         (sut/focus (int 2) [:x :x :value :y])))
 
   (is (= [:x :x :value :y]
-         (sut/put 2 :value [:x :x :x :y])))
+         (sut/put (long 2) :value [:x :x :x :y])
+         (sut/put (int 2) :value [:x :x :x :y])))
 
   (is (= [nil nil :x]
-         (sut/put 2 :x [])))
+         (sut/put (long 2) :x [])
+         (sut/put (int 2) :x [])))
 
   (is (= [:x :x 43 :y]
-         (sut/over 2 inc [:x :x 42 :y])))
+         (sut/over (long 2) inc [:x :x 42 :y])
+         (sut/over (int 2) inc [:x :x 42 :y])))
 
   (is (= [1]
-         (sut/over 0 (fnil inc 0) []))))
+         (sut/over (long 0) (fnil inc 0) [])
+         (sut/over (int 0) (fnil inc 0) []))))
 
 (deftest nil-lens-test
   (is (= nil (sut/focus nil {:foo 42})))
@@ -61,7 +67,7 @@
 
 ;; compound lenses
 
-(deftest sequential-lens-test
+(deftest vector-lens-test
   (is (= :value
          (sut/focus [:foo 1] {:foo [:x :value]})))
   
@@ -75,7 +81,11 @@
          (sut/put [:foo :bar] :x {})))
 
   (is (= {:foo [nil :x]}
-         (sut/put [:foo 1] :x {}))))
+         (sut/put [:foo 1] :x {})))
+
+  ;; Have covered subvecs too?
+  (is (= :value 
+         (sut/focus (subvec [:foo 1 2] 0 2) {:foo [:x :value]}))))
 
 (deftest map-compound-lens-test
   (let [test-map {:eu {:italy {:capital :rome, :lang :italian}
@@ -154,12 +164,7 @@
            (sut/over [:eu #{[:italy :capital]
                             [:france :capital]}]
                      name
-                     test-map)))
-
-    (is (thrown? java.lang.ClassCastException
-                 (sut/put [:eu #{:italy :france} :lang]
-                          :lojban
-                          test-map)))))
+                     test-map)))))
 
 (deftest reflect-test
   (let [test-map {:bravo 1

@@ -5,7 +5,8 @@
             [ergo.async-utils :as utils]
             [soliton.sm.core]
             [soliton.core]
-            [soliton.async]))
+            [soliton.async])
+  #?(:cljs (:require-macros [soliton.sm.async :refer [-<>]])))
 
 (defprotocol Focus
   (-focus [l s]))
@@ -71,13 +72,23 @@
   (utils/pgo-safe
     (:state (a/<! (map-op l s over f ergo/last nil)))))
 
-(extend-type clojure.lang.PersistentVector
+(extend-type #?(:clj clojure.lang.IPersistentVector
+                :cljs cljs.core/PersistentVector)
   Focus
   (-focus [l s] (async-sm-focus l s))
   Put
   (-put [l v s] (async-sm-put l v s))
   Over
   (-over [l f s] (async-sm-over l f s)))
+
+#?(:cljs
+(extend-type cljs.core/Subvec
+  Focus
+  (-focus [l s] (async-sm-focus l s))
+  Put
+  (-put [l v s] (async-sm-put l v s))
+  Over
+  (-over [l f s] (async-sm-over l f s))))
 
 (defn async-sm-focus-steps
   [l s]

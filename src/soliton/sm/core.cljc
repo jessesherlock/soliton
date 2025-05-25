@@ -12,17 +12,13 @@
 (defn put
   [l v s]
   (if (vector? l)
-    (if (satisfies? p/Put l)
-      (p/-put l v s)
-      (p/default-put l v s))
+    (p/-put l v s)
     (core/put l v s)))
 
 (defn over
   [l f s]
   (if (vector? l)
-    (if (satisfies? p/Over l)
-      (p/-over l f s)
-      (p/default-over l f s))
+    (p/-over l f s)
     (core/over l f s)))
 
 (defn focus-rf
@@ -118,13 +114,23 @@
   [l f s]
   (map-op l s over f conj []))
 
-(extend-type clojure.lang.PersistentVector
+(extend-type #?(:clj clojure.lang.IPersistentVector
+                :cljs cljs.core/PersistentVector)
   p/Focus
   (p/-focus [l s] (sm-focus l s))
   p/Put
   (p/-put [l v s] (sm-put l v s))
   p/Over
   (p/-over [l f s] (sm-over l f s)))
+
+#?(:cljs
+(extend-type cljs.core/Subvec
+  p/Focus
+  (p/-focus [l s] (sm-focus l s))
+  p/Put
+  (p/-put [l v s] (sm-put l v s))
+  p/Over
+  (p/-over [l f s] (sm-over l f s))))
 
 (defn focus-steps
   [l s]
@@ -140,4 +146,3 @@
   [l f s]
   (-> (if (sequential? l) l [l])
       (sm-over-steps f s)))
-

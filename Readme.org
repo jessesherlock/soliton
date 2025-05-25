@@ -1,12 +1,12 @@
 * Soliton
 
-soliton [sol-i-ton]; noun; a solitary wave (as in a gaseous plasma) that propagates with little loss of energy and retains its shape and speed after colliding with another such wave
+soliton [sol-i-ton]; noun; a solitary wave that propagates with little loss of energy and retains its shape and speed after colliding with another such wave
 
 Soliton is a Clojure/Clojurescript lens library that covers well behaved lenses as well as useful lens-adjacent optics.
 
 ** Install
 
-~com.jessesherlock/soliton {:mvn/version "0.1.3"}~ / ~[com.jessesherlock/soliton "0.1.3"]~
+~com.jessesherlock/soliton {:mvn/version "0.1.5"}~ / ~[com.jessesherlock/soliton "0.1.5"]~
 
 ** Basic lens operations
 
@@ -136,13 +136,13 @@ You can also create a "reflector" which is also a lens
 
 #+BEGIN_SRC clojure
   (def cart {:cart {:items [:a :b :c]
-	  	    :subtotal 100
-		    :taxes {:rate 0.05 :tax-total 5}
-		    :fees {:fee-list [:d :e :f] :fee-total 15}}}
+                    :subtotal 100
+                    :taxes {:rate 0.05 :tax-total 5}
+                    :fees {:fee-list [:d :e :f] :fee-total 15}}}
   (def totals (reflector :subtotal
                          [:taxes :tax-total]
-			 [:fees :fee-total]
-			 :grand-total))
+                         [:fees :fee-total]
+                         :grand-total))
 			 
   (focus totals cart)
   ; (100 5 15)
@@ -174,7 +174,7 @@ You can also use ~soliton.core/<>~ to create a function with the lenses and func
 
   (def test-map {:bravo 1
                  :alpha {:bravo 2
-	                 :charlie 1}})
+                         :charlie 1}})
   (-<> test-map
     (+ :bravo [:alpha :bravo] :bravos-total)
     (+ :bravos-total (l/const 10) :total-plus-10)

@@ -50,6 +50,9 @@
       (is (= 42 (a/<! (sut/focus [:foo :bar] (a/go {:foo {:bar 42}})))))
       (is (= 42 (a/<! (sut/focus [:foo :bar] {:foo {:bar (a/go 42)}}))))
 
+      ;; subvecs covered?
+      (is (= 42 (a/<! (sut/focus (subvec [:foo :bar :baz] 0 2) {:foo {:bar 42}}))))
+
       (is (= {:foo [:x :value :z]}
              (a/<! (sut/put [:foo 1] :value {:foo [:x :y :z]}))))
       (is (= {:foo [:x :value :z]}
