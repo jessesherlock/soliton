@@ -9,13 +9,13 @@
 
 (defn ainc [x] (a/go (inc x)))
 
-(deftest basic-aover-test
+(deftest basic-over-test
   (ta/async
       done
       (a/go
-        (is (= {:foo 2} (a/<! (sut/aover :foo ainc {:foo 1}))))
-        (is (= {:foo {:bar 2}} (a/<! (sut/aover [:foo :bar] ainc {:foo {:bar 1}}))))
-        (is (= [1 3 3] (a/<! (sut/aover [1] ainc [1 2 3]))))
+        (is (= {:foo 2} (a/<! (sut/over :foo ainc {:foo 1}))))
+        (is (= {:foo {:bar 2}} (a/<! (sut/over [:foo :bar] ainc {:foo {:bar 1}}))))
+        (is (= [1 3 3] (a/<! (sut/over [1] ainc [1 2 3]))))
         (done))))
 
 (deftest lift-test
@@ -54,23 +54,50 @@
                               :charlie 1}
                       :bravos 3}]
         (is (= expected
-               (a/<! (sut/areflect [:bravo [:alpha :bravo] :bravos]
+               (a/<! (sut/reflect [:bravo [:alpha :bravo] :bravos]
+                                  a+
+                                  test-map))
+               (a/<! (sut/?reflect [:bravo [:alpha :bravo] :bravos]
                                    a+
+                                   test-map))
+               (a/<! (sut/?reflect [:bravo [:alpha :bravo] :bravos]
+                                   +
                                    test-map))))
 
         (let [reflector (core/reflector :bravo [:alpha :bravo] :bravos)]
           (is (= expected
-                 (a/<! (sut/aover reflector a+ test-map))))
+                 (a/<! (sut/over reflector a+ test-map))
+                 (a/<! (sut/?over reflector a+ test-map))
+                 (a/<! (sut/?over reflector + test-map))))
           (is (= {:foo expected}
-                 (a/<! (sut/aover [:foo reflector] a+ {:foo test-map}))))))
+                 (a/<! (sut/over [:foo reflector] a+ {:foo test-map}))
+                 (a/<! (sut/?over [:foo reflector] a+ {:foo test-map}))
+                 (a/<! (sut/?over [:foo reflector] + {:foo test-map}))
+                 ))))
 
       (is (= {:in 1 :out 2}
-             (a/<! (sut/aover (core/reflector :in :out) ainc {:in 1}))))
+             (a/<! (sut/over (core/reflector :in :out) ainc {:in 1}))))
       (is (= {:in 1 :out 2}
-             (a/<! (sut/areflect [:in :out] ainc {:in 1}))))
+             (a/<! (sut/reflect [:in :out] ainc {:in 1}))))
+     (done))))
+
+(deftest <>-test
+  (ta/async
+      done
+    (a/go
+      (let [test-map {:foo 1, :bar 2, :baz {:one 1, :two 2}}]
+        (is (= {:foo 1
+                :bar 2
+                :baz {:one 1
+                      :two 2
+                      :subtotal 3}
+                :total 7}
+               (a/<! (sut/-<> test-map
+                              (a+ [:baz :one] [:baz :two] [:baz :subtotal])
+                              (a+ [:baz :subtotal] :foo :bar :total)
+                              (ainc :total)))
+               (a/<! (sut/-?<> test-map
+                               (+ [:baz :one] [:baz :two] [:baz :subtotal])
+                               (a+ [:baz :subtotal] :foo :bar :total)
+                               (inc :total))))))
       (done))))
-
-(comment
-
-
-  ,)

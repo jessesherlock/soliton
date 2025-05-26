@@ -6,7 +6,7 @@ Soliton is a Clojure/Clojurescript lens library that covers well behaved lenses 
 
 ** Install
 
-~com.jessesherlock/soliton {:mvn/version "0.1.5"}~ / ~[com.jessesherlock/soliton "0.1.5"]~
+~com.jessesherlock/soliton {:mvn/version "0.1.6"}~ / ~[com.jessesherlock/soliton "0.1.6"]~
 
 ** Basic lens operations
 
@@ -261,7 +261,7 @@ What we would often prefer is an async response of a data structure without any 
 
 #+BEGIN_SRC clojure
 (require '[clojure.core.async :as a])
-(require '[soliton.async :refer [aover]])
+(require '[soliton.async :as soliton.a])
 
 ; a mock of our hypothetical async http api request function, you get the point
 (defn get-api-result [arg] (a/go {:result 1234}))
@@ -271,12 +271,43 @@ What we would often prefer is an async response of a data structure without any 
 ; {:foo {:bar (a/to-chan! [{:result 1234}])}}
 
 ; what we would often prefer
-(a/<! (aover [:foo :bar] get-api-result {:foo {:bar :arg}}))
+(a/<! (soliton.a/over [:foo :bar] get-api-result {:foo {:bar :arg}}))
 ; {:foo {:bar {:result 1234}}})
 
 #+END_SRC clojure
 
-Normal lenses and reflectors work with ~aover~, reflectors implement the Async-Over protocol used by ~aover~, there is also an ~areflect~ function to reflect over an async function directly
+There are also versions of ~reflect~, ~<>~ and ~-<>~ for functions returning async values
+
+#+BEGIN_SRC clojure
+(defn a+ [& xs] (a/go (apply + xs)))
+(defn ainc [x] (a/go (inc x)))
+
+(a/<! (soliton.a/reflect [:foo :bar :total] a+ {:foo 1 :bar 2}))
+; {:foo 1 :bar 2 :total 3}
+
+(a/<! (soliton.a/-<> {:foo 1 :bar 2}
+                     (a+ :foo :bar :total)
+                     (ainc :total)))
+; {:foo 1 :bar 2 :total 4}
+#+END_SRC clojure
+
+And alternative versions: ~?over~, ~?<>~ and ~-?<>~ that accept functions that may or may not return a channel, to allow you to mix normal and async fns with the ~-<>~ threading operator.
+
+#+BEGIN_SRC clojure
+(defn a+ [& xs] (a/go (apply + xs)))
+
+(a/<! (soliton.a/reflect [:foo :bar :total] a+ {:foo 1 :bar 2}))
+; {:foo 1 :bar 2 :total 3}
+(a/<! (soliton.a/reflect [:foo :bar :total] a+ {:foo 1 :bar 2}))
+; {:foo 1 :bar 2 :total 3}
+
+(a/<! (soliton.a/-<> {:foo 1 :bar 2}
+                     (+ :foo :bar :total)
+                     (ainc :total)))
+; {:foo 1 :bar 2 :total 4}
+#+END_SRC clojure
+
+Normal lenses and reflectors work with the ~soliton.async~, creating lenses that support async function application requires implementing the ~soliton.async/Async-Over~ protocol.
 
 *** Lifting
 
@@ -301,7 +332,7 @@ If we have multiple locations with channels we can use ~multi-lift~
 		   :other (a/to-chan! [:other])})) 
 #+END_SRC clojure
 
-~multi-lift~ uses ~clojure.core.async/alts!~ so if you have multiple async operations to perform on some state, it may be faster to use ~soliton.core/over~ or ~soliton.core/-<>~ and then use multi-lift to do the work in parallel as opposed to threading the state through ~soliton.async/aover~  or using ~soliton.async/-<>~ to do it in sequence.
+~multi-lift~ uses ~clojure.core.async/alts!~ so if you have multiple async operations to perform on some state, it may be faster to use ~soliton.core/over~ or ~soliton.core/-<>~ and then use multi-lift to do the work in parallel as opposed to threading the state through ~soliton.async/over~  or using ~soliton.async/-<>~ to do it in sequence.
 
 ** Soliton.SM - The state machine version
 

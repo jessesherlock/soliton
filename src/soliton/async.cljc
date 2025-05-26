@@ -6,7 +6,8 @@
             [ergo.async-utils :as autils]))
 
 (defprotocol Async-Over
-  (-aover [l af s]))
+  (-async-over [l af s])
+  (-async?-over [l f s]))
 
 (defn stitch
   [lenses steps value]
@@ -16,41 +17,69 @@
       value
       (recur (pop lenses) steps value))))
 
-(declare aover)
+(declare over ?over)
 
-(defn non-compound-async-over
+(defn single-async-over
   [l af s]
   (let [target (core/focus l s)]
     (autils/pgo-safe
       (let [value (a/<! (af target))]
         (core/put l value s)))))
 
+(defn single-async?-over
+  [l f s]
+  (let [target (core/focus l s)]
+    (autils/pgo-safe
+      (let [value (autils/?<! (f target))]
+        (core/put l value s)))))
+
 (defn default-async-over
   [ls af s]
   (if (vector? ls)
     (if (= 1 (count ls))
-      (non-compound-async-over (ls 0) af s)
+      (single-async-over (ls 0) af s)
       (let [focus-steps (pop (core/focus-steps ls s))
             subject (peek focus-steps)
             steps (pop focus-steps)
             last-lens (last ls)
-            result (aover last-lens af subject)]
+            result (over last-lens af subject)]
         (autils/pgo-safe
           (let [result (a/<! result)
                 ls (pop ls)]
             (stitch ls steps result)))))
-    (non-compound-async-over ls af s)))
+    (single-async-over ls af s)))
 
-(defn aover
+(defn default-async?-over
+  [ls af s]
+  (if (vector? ls)
+    (if (= 1 (count ls))
+      (single-async?-over (ls 0) af s)
+      (let [focus-steps (pop (core/focus-steps ls s))
+            subject (peek focus-steps)
+            steps (pop focus-steps)
+            last-lens (last ls)
+            result (?over last-lens af subject)]
+        (autils/pgo-safe
+          (let [result (autils/?<! result)
+                ls (pop ls)]
+            (stitch ls steps result)))))
+    (single-async?-over ls af s)))
+
+(defn over
   [l af s]
   (if (satisfies? Async-Over l)
-    (-aover l af s)
+    (-async-over l af s)
     (default-async-over l af s)))
 
+(defn ?over
+  [l f s]
+  (if (satisfies? Async-Over l)
+    (-async?-over l f s)
+    (default-async?-over l f s)))
 
 (defn lift
   [l s]
-  (aover l lens/id s))
+  (over l lens/id s))
 
 (defn multi-put
   [chan-map s]
@@ -76,34 +105,52 @@
               (a/<! (apply af (p/-focus reflector s)))
               s)))
 
+(defn reflector-async?-over
+  [reflector f s]
+  (autils/pgo-safe
+    (core/put (:target reflector)
+              (autils/?<! (apply f (p/-focus reflector s)))
+              s)))
+
 (extend-type soliton.core.Reflector
   Async-Over
-  (-aover [l af s] (reflector-async-over l af s)))
+  (-async-over [l af s] (reflector-async-over l af s))
+  (-async?-over [l f s] (reflector-async?-over l f s)))
 
-(defn areflect
+(defn reflect
   [lenses af s]
   (if (next lenses)
     (autils/pgo-safe
       (core/put (last lenses)
                 (a/<! (apply af (map #(core/focus % s) (butlast lenses))))
                 s))
-    (aover (first lenses) af s)))
+    (over (first lenses) af s)))
 
+(defn ?reflect
+  [lenses f s]
+  (if (next lenses)
+    (autils/pgo-safe
+      (core/put (last lenses)
+                (autils/?<! (apply f (map #(core/focus % s) (butlast lenses))))
+                s))
+    (?over (first lenses) f s)))
 
- (comment
+(defn <>
+  [f & ls]
+  (fn [s] (reflect ls f s)))
 
-   (let [x {:foo (autils/->pchan 42)
-            :bar {:baz 7 :bam (autils/->pchan 7)}
-            :qux [0 1 (autils/->pchan 13)]}]
-     (a/<!! (multi-lift [:foo [:bar :bam] [:qux 2]] x)))
+(defn ?<>
+  [f & ls]
+  (fn [s] (?reflect ls f s)))
 
-   (defn a+ [& xs] (println "a+ args" xs) (autils/pgo-safe (apply + xs)))
-   (defn ainc [x] (a/go (inc x)))
+(defmacro -<>
+  [x & forms]
+  (let [fn-forms (soliton.core/-<>-form forms <>)
+        fn-forms (interleave (repeat `a/<!) fn-forms)]
+    (cons '->> (cons x (rest fn-forms)))))
 
-   (a/<!! (a+ 1 2 3))
-
-   (a/<!! (aover [:foo :bar] ainc {:foo {:bar 7}}))
-
-
-   ,)
-  
+(defmacro -?<>
+  [x & forms]
+  (let [fn-forms (soliton.core/-<>-form forms ?<>)
+        fn-forms (interleave (repeat `autils/?<!) fn-forms)]
+    (cons '->> (cons x (rest fn-forms)))))

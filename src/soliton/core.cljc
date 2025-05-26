@@ -221,14 +221,17 @@
   [f & ls]
   (fn [s] (reflect ls f s)))
 
+(defn -<>-form
+  [forms <>-fn]
+  (loop [x [], forms forms]
+    (if forms
+      (let [form (first forms)
+            wrapped (if (seq? form)
+                      (conj x (list `(~<>-fn ~@form)))
+                      (conj x form))]
+        (recur wrapped (next forms)))
+      (seq x))))
+
 (defmacro -<>
   [x & forms]
-  (let [x ['->> x]]
-    (loop [x x, forms forms]
-      (if forms
-        (let [form (first forms)
-              wrapped (if (seq? form)
-                        (conj x (list (cons `<> form)))
-                        (conj x form))]
-          (recur wrapped (next forms)))
-        (seq x)))))
+  (cons '->> (cons x (-<>-form forms <>))))

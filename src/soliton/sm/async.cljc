@@ -32,7 +32,7 @@
 (defn non-compound-async-over
   [l af s]
   (if (satisfies? soliton.async/Async-Over l)
-    (soliton.async/-aover l af s)
+    (soliton.async/-async-over l af s)
     (utils/pgo-safe
       (let [target (utils/?<? (soliton.core/focus l s))
             value (utils/?<? (af target))]
@@ -145,14 +145,7 @@
   [f & ls]
   (fn [s] (reflect ls f s)))
 
+
 (defmacro -<>
   [x & forms]
-  (let [x ['->> x]]
-    (loop [x x, forms forms]
-      (if forms
-        (let [form (first forms)
-              wrapped (if (seq? form)
-                        (conj x (list (cons `<> form)))
-                        (conj x form))]
-          (recur wrapped (next forms)))
-        (seq x)))))
+  (cons '->> (cons x (soliton.core/-<>-form forms <>))))
