@@ -177,20 +177,20 @@
 (extend-type #?(:clj clojure.lang.IPersistentSet
                 :cljs cljs.core/PersistentHashSet)
   p/Focus
-  (p/-focus [l s] (set-focus l s))
+  (-focus [l s] (set-focus l s))
   p/Put
-  (p/-put [l v s] (set-put l v s))
+  (-put [l v s] (set-put l v s))
   p/Over
-  (p/-over [l f s] (set-over l f s)))
+  (-over [l f s] (set-over l f s)))
 
 #?(:cljs
 (extend-type cljs.core/PersistentTreeSet
   p/Focus
-  (p/-focus [l s] (set-focus l s))
+  (-focus [l s] (set-focus l s))
   p/Put
-  (p/-put [l v s] (set-put l v s))
+  (-put [l v s] (set-put l v s))
   p/Over
-  (p/-over [l f s] (set-over l f s))))
+  (-over [l f s] (set-over l f s))))
 
 ;; * Reflection
 
@@ -204,13 +204,13 @@
 
 (extend-type soliton.core.Reflector
   p/Focus
-  (p/-focus [l s] (map #(p/-focus % s) (:sources l)))
+  (-focus [l s] (map #(p/-focus % s) (:sources l)))
   p/Put
-  (p/-put [l v s] (put (:target l) v s))
+  (-put [l v s] (put (:target l) v s))
   p/Over
-  (p/-over [l f s] (put (:target l)
-                        (apply f (p/-focus l s))
-                        s)))
+  (-over [l f s] (put (:target l)
+                      (apply f (p/-focus l s))
+                      s)))
 (defn reflect
   [lenses f s]
   (if (next lenses)
@@ -222,16 +222,16 @@
   (fn [s] (reflect ls f s)))
 
 (defn -<>-form
-  [forms <>-fn]
+  [forms <>-fn-sym]
   (loop [x [], forms forms]
     (if forms
       (let [form (first forms)
             wrapped (if (seq? form)
-                      (conj x (list `(~<>-fn ~@form)))
+                      (conj x (list `(~<>-fn-sym ~@form)))
                       (conj x form))]
         (recur wrapped (next forms)))
       (seq x))))
 
 (defmacro -<>
   [x & forms]
-  (cons '->> (cons x (-<>-form forms <>))))
+  (cons '->> (cons x (-<>-form forms `<>))))

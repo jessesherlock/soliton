@@ -208,20 +208,20 @@
       (done))))
 
 (deftest <>-test
-  (ta/async
-      done
-    (a/go
-      (let [test-map {:foo 1, :bar 2, :baz {:one 1, :two 2}}]
-        (is (= {:foo 1
-                :bar 2
-                :baz {:one 1
-                      :two 2
-                      :subtotal 3}
-                :total 7}
-               (a/<! (sut/-<> test-map
-                              (a+ [:baz :one] [:baz :two] [:baz :subtotal])
-                              (+ [:baz :subtotal] :foo :bar :total)
-                              (ainc :total))))))
-      (done))))
+    (ta/async
+        done
+        (a/go
+          (let [test-map {:foo 1, :bar 2, :baz {:one 1, :two 2}}]
+            (is (= {:foo 1
+                    :bar 2
+                    :baz {:one 1
+                          :two 2
+                          :subtotal 3}
+                    :total 7}
+                   (a/<! (sut/-<> test-map
+                           (a+ [:baz :one] [:baz :two] [:baz :subtotal])
+                           (+ [:baz :subtotal] :foo :bar :total)
+                           (ainc :total))))))
+          (done))))
 
 

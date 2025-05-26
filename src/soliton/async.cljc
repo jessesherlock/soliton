@@ -145,12 +145,12 @@
 
 (defmacro -<>
   [x & forms]
-  (let [fn-forms (soliton.core/-<>-form forms <>)
-        fn-forms (interleave (repeat `a/<!) fn-forms)]
-    (cons '->> (cons x (rest fn-forms)))))
+  (let [fn-forms (soliton.core/-<>-form forms `<>)
+        fn-forms (interleave fn-forms (repeat `a/<!))]
+    (list `autils/pgo-safe (cons '->> (cons x fn-forms)))))
 
 (defmacro -?<>
   [x & forms]
-  (let [fn-forms (soliton.core/-<>-form forms ?<>)
-        fn-forms (interleave (repeat `autils/?<!) fn-forms)]
-    (cons '->> (cons x (rest fn-forms)))))
+  (let [fn-forms (soliton.core/-<>-form forms `?<>)
+        fn-forms (interleave fn-forms (repeat `autils/?<!))]
+    (list `autils/pgo-safe (cons '->> (cons x fn-forms)))))

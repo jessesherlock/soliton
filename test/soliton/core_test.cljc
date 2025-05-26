@@ -1,7 +1,8 @@
 (ns soliton.core-test
   (:require [clojure.test :refer [deftest is testing]]
-            [soliton.lens :refer [const] :as lens]
-            [soliton.core :as sut]))
+            [soliton.lens :as lens]
+            [soliton.core :as sut])
+  #?(:cljs (:require-macros [soliton.core :as sut])))
 
 #?(:clj (set! *warn-on-reflection* true)
    :cljs (set! *warn-on-infer* true))
@@ -205,31 +206,45 @@
            
              ((sut/<> str :bravo) test-map))))))
 
-(deftest <>-test
+
+(deftest -<>-test
   (let [test-map {:bravo 1
                   :alpha {:bravo 2
                           :charlie 1}}]
-    (is (= {:bravo 1
-            :alpha {:bravo 2
-                    :charlie 1}
-            :bravos 3}
+       (is (= {:bravo 1
+               :alpha {:bravo 2
+                       :charlie 1}
+               :bravos 3}
 
-           ((sut/<> + :bravo [:alpha :bravo] :bravos) test-map)
-           
-           (->> test-map ((sut/<> + :bravo [:alpha :bravo] :bravos)))
+              {:bravo 1
+               :alpha {:bravo 2
+                       :charlie 1}
+               :bravos 3}
 
-           (sut/-<> test-map (+ :bravo [:alpha :bravo] :bravos))))
+              ((sut/<> + :bravo [:alpha :bravo] :bravos) test-map)
 
-    (is (= {:bravo 1
-            :alpha {:bravo 2
-                    :charlie 1}
-            :bravos 3
-            :total 7
-            :total-str "7"
-            :total-plus-10 17}
+              (->> test-map ((sut/<> + :bravo [:alpha :bravo] :bravos)))
 
-           (sut/-<> test-map
-             (+ :bravo [:alpha :bravo] :bravos)
-             (+ :bravo [:alpha :bravo] [:alpha :charlie] :bravos :total)
-             (+ :total (const 10) :total-plus-10)
-             (str :total :total-str))))))
+              (sut/-<> test-map (+ :bravo [:alpha :bravo] :bravos))))
+
+       (is (= {:bravo 1
+               :alpha {:bravo 2
+                       :charlie 1}
+               :bravos 3
+               :total 7
+               :total-str "7"
+               :total-plus-10 17}
+
+              {:bravo 1
+               :alpha {:bravo 2
+                       :charlie 1}
+               :bravos 3
+               :total 7
+               :total-str "7"
+               :total-plus-10 17}
+
+              (sut/-<> test-map
+                       (+ :bravo [:alpha :bravo] :bravos)
+                       (+ :bravo [:alpha :bravo] [:alpha :charlie] :bravos :total)
+                       (+ :total (lens/const 10) :total-plus-10)
+                       (str :total :total-str))))))

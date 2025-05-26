@@ -145,7 +145,6 @@
   [f & ls]
   (fn [s] (reflect ls f s)))
 
-
 (defmacro -<>
   [x & forms]
-  (cons '->> (cons x (soliton.core/-<>-form forms <>))))
+  (cons '->> (cons x (soliton.core/-<>-form forms `<>))))
