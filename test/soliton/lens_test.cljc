@@ -256,3 +256,45 @@
 
   (is (= [1]
          (put sut/next [1] nil))))
+
+(deftest atom-test
+  (is (= [1 2 3 4]
+         (focus sut/atom (atom [1 2 3 4]))))
+
+  (is (= [1 2 3 4]
+         (deref (put sut/atom [1 2 3 4] (atom [])))))
+
+  (is (= [1 2 3]
+         (deref (over sut/atom pop (atom [1 2 3 4])))))
+
+  (let [a (atom [1 2 3 4])
+        state {:foo a :bar 2}
+        result (over [:foo sut/atom] pop state)]
+    (is (= result {:foo a :bar 2}))
+    (is (= [1 2 3] (deref (:foo state)))))
+
+  ;; how to break atomic semantics with sut/atom
+  ;; we'll only demo this in clj, the same happens in cljs if you have any async
+  ;; but the demo is messier
+  ;; you can uncomment this and run it repeatedly to see it sometimes return 111, sometimes return 110 and sometimes 11
+
+  #?(:clj
+     (comment 
+     (let [a (atom {:alpha 10, :bravo 20})
+           state {:foo a :bar 2}
+           ;; use sut/atom in a compound lens but not as the last lens
+           alpha-lens [:foo sut/atom :alpha]
+           ;; kick off our business logic process
+           our-process (future (over alpha-lens inc state))
+           ;; another parallel process adding 100
+           another-process (future (over alpha-lens #(+ % 100) state))
+           ;; wait for our-process to complete
+           _ @our-process
+           ;; wait for another-process to complete
+           _ @another-process]
+       (let [alpha (-> state :foo deref :alpha)]
+         ;; So alpha is 10, then take, add 1, take, add 100 in parallel
+         ;; of course it equals ... 11? 110? 111?
+         ;; don't use atom lenses this way
+         (is (= 111 alpha))
+         )))))

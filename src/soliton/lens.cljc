@@ -1,5 +1,5 @@
 (ns soliton.lens
-  (:refer-clojure :exclude [dissoc first key merge next pop peek rest select-keys])
+  (:refer-clojure :exclude [atom dissoc first key merge next pop peek rest select-keys])
   (:require [clojure.core :as c]
             [soliton.protocols :as p]
             #?(:cljs [cljs.core :refer [IDeref]]))
@@ -203,3 +203,16 @@
   ([s v] (if (empty? s)
            (seq v)
            (cons (c/first s) v))))
+
+;; ** atom lenses
+;; Using an atom means you probably want the atomic semantics they provide
+;; If lensing "through" an atom ever occurs, if you have at atom lens in
+;; a compound lens and the atom lens is anything but the last lens
+;; then things are no longer atomic
+
+;; This also applies to using async-over with an atom lens in any way
+
+(defn atom-setter [a v] (doto a (reset! v)))
+(defn atom-updater [a f] (doto a (swap! f)))
+
+(def atom (lens deref atom-setter atom-updater))
