@@ -223,5 +223,3 @@
                            (+ [:baz :subtotal] :foo :bar :total)
                            (ainc :total))))))
           (done))))
-
-

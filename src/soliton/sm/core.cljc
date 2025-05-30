@@ -86,9 +86,9 @@
   (->> s
        (->sm-context l operand)
        (ergo/produce (comp (ergo/iterate (sm-step operator put))
-                          ergo/til-nil)
-                    rf
-                    init)))
+                           ergo/til-nil)
+                     rf
+                     init)))
 
 (defn sm-focus
   [l s]
