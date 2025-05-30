@@ -6,7 +6,7 @@ Soliton is a Clojure/Clojurescript lens library that covers well behaved lenses 
 
 ** Install
 
-~com.jessesherlock/soliton {:mvn/version "0.1.8"}~ / ~[com.jessesherlock/soliton "0.1.8"]~
+~com.jessesherlock/soliton {:mvn/version "0.1.9"}~ / ~[com.jessesherlock/soliton "0.1.9"]~
 
 ** Basic lens operations
 
@@ -67,6 +67,40 @@ Lenses are composed by putting them in a vector
 #+END_SRC clojure
 
 ~soliton.lens~ has a number of useful lenses and lens constructors. Including ~fmap~ to construct a lens from a getter and an update fn, ~iso~ for very useful two way conversion lenses, map, vector, stack and list related lenses.
+
+*** The Atom lens
+
+~soliton.lens~ also includes an atom lens, which is useful but has one important caveat, if it is used in a compound lens and is not the last lens, then you have thrown out the atomic properties of the atom.
+
+#+BEGIN_SRC clojure
+  (require '[soliton.lens :as l])
+  
+  (focus [:foo l/atom :bar] {:foo (atom {:bar :value})})
+  ; :value
+  ; no issues, focus only derefs the atom so it accessed once
+
+  (put [:foo l/atom] {:bar :value} {:foo (atom {:bar 42})})
+  ; {:foo (atom {:bar :value}})}
+  ; no issues, l/atom is the last lens so the put is atomic
+  
+  (put [:foo l/atom :bar] :value {:foo (atom {:bar 42})})
+  ; {:foo (atom {:bar :value}})} ... maybe
+  ; l/atom is not the last lens, so the atom was deref'd, the map
+  ; {:bar :value} was created and then put in the atom
+  ; non-atomic use of the atom, potential race conditions
+  
+  (over [:foo l/atom] inc {:foo (atom 42)})
+  ; {:foo (atom 43)}
+  
+  (over [:foo l/atom :bar :baz] inc {:foo (atom {:bar {:baz 42}})})
+  ; {:foo (atom {:bar {:baz 43}})} ... maybe
+  ; the same race condition as with the put example
+  
+  (over [:foo l/atom] #(over [:bar :baz] inc %) {:foo (atom {:bar {:baz 42}})})
+  ; {:foo (atom {:bar {:baz 43}})}
+  ; we can avoid the race condition by spliting the compound lens at the l/atom
+  ; lens so that the we are never lensing "through" the atom
+#+END_SRC clojure
 
 ** Odd lenses
 

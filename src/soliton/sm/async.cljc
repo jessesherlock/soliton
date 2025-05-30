@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as a]
             [ergo.core :as ergo]
             [ergo.async]
+            [ergo.async-mixed]
             [ergo.async-utils :as utils]
             [soliton.sm.core]
             [soliton.core]
@@ -46,16 +47,14 @@
 
 (defn map-op
   [l s operator operand rf init]
-  (ergo.async/produce
-   (comp (ergo.async/iterate (utils/pchan-returning
-                              (soliton.sm.core/sm-step operator put)))
+  (ergo/produce
+   (comp (ergo.async-mixed/iterate (soliton.sm.core/sm-step operator put))
          ergo/til-nil)
    rf
    init
-   (utils/->pchan
-    s
-    (a/promise-chan
-     (map #(soliton.sm.core/->sm-context l operand %))))))
+   (if (utils/chan? s)
+     (a/go (soliton.sm.core/->sm-context l operand (a/<! s)))
+     (soliton.sm.core/->sm-context l operand s))))
 
 (defn async-sm-focus
   [l s]
