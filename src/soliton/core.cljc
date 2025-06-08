@@ -93,22 +93,13 @@
     (over l f s)))
 
 (extend-type #?(:clj clojure.lang.IPersistentVector
-                :cljs cljs.core/PersistentVector)
+                :cljs cljs.core/IVector)
   p/Focus
   (-focus [l s] (reduce-focus l s))
   p/Put
   (-put [l v s] (rec-put l v s))
   p/Over
   (-over [l f s] (rec-over l f s)))
-
-#?(:cljs
-(extend-type cljs.core/Subvec
-  p/Focus
-  (-focus [l s] (reduce-focus l s))
-  p/Put
-  (-put [l v s] (rec-put l v s))
-  p/Over
-  (-over [l f s] (rec-over l f s))))
 
 ;; ** fns for maps of lenses
 
@@ -127,31 +118,13 @@
              lens-map))
 
 (extend-type #?(:clj clojure.lang.IPersistentMap
-                :cljs cljs.core/PersistentArrayMap)
+                :cljs cljs.core/IMap)
   p/Focus
   (-focus [l s] (map-focus l s))
   p/Put
   (-put [l v s] (map-put l v s))
   p/Over
   (-over [l f s] (p/default-over l f s)))
-
-#?(:cljs
-(extend-type cljs.core/PersistentHashMap
-  p/Focus
-  (-focus [l s] (map-focus l s))
-  p/Put
-  (-put [l v s] (map-put l v s))
-  p/Over
-  (-over [l f s] (p/default-over l f s))))
-
-#?(:cljs
-   (extend-type cljs.core/PersistentTreeMap
-     p/Focus
-     (-focus [l s] (map-focus l s))
-     p/Put
-     (-put [l v s] (map-put l v s))
-     p/Over
-     (-over [l f s] (p/default-over l f s)))) 
 
 
 ;; ** fns for sets of lenses
@@ -175,7 +148,7 @@
       (p/-over lens f s))))
 
 (extend-type #?(:clj clojure.lang.IPersistentSet
-                :cljs cljs.core/PersistentHashSet)
+                :cljs cljs.core/ISet)
   p/Focus
   (-focus [l s] (set-focus l s))
   p/Put
@@ -183,14 +156,17 @@
   p/Over
   (-over [l f s] (set-over l f s)))
 
-#?(:cljs
-(extend-type cljs.core/PersistentTreeSet
+;; ** fns for lists of lenses
+
+(extend-type #?(:clj clojure.lang.IPersistentList
+                :cljs cljs.core/IList)
   p/Focus
   (-focus [l s] (set-focus l s))
   p/Put
   (-put [l v s] (set-put l v s))
   p/Over
-  (-over [l f s] (set-over l f s))))
+  (-over [l f s] (set-over l f s)))
+
 
 ;; * Reflection
 
@@ -235,3 +211,44 @@
 (defmacro -<>
   [x & forms]
   (cons '->> (cons x (-<>-form forms `<>))))
+
+;; lens expansion
+;; when using the odd lenses (maps/sets/lists) it can be useful to
+;; get the set of all locations being lensed into
+
+(defn expand-append
+  [acc l]
+  (mapv #(conj % l) acc))
+
+(defn expand-lens
+  ([l] (expand-lens l [[]]))
+  ([l acc]
+   (cond
+     (nil? l) acc
+     (vector? l) (let [[x & xs] l]
+                   (expand-lens (if xs (vec xs)) (expand-lens x acc)))
+     (map? l) (expand-lens (set (vals l)) acc)
+     (or (list? l)
+         (set? l)) (let [ls (seq l)]
+                     (vec (mapcat #(expand-lens % acc) ls)))
+     :else (expand-append acc l))))
+
+(defn expanded-equal?
+  [a b]
+  (= (sort (expand-lens a)) (sort (expand-lens b))))
+
+(defn prefix?
+  [a b]
+  (let [count-a (count a)]
+    (when-not (>= count-a (count b))
+      (= (seq a) (take count-a b)))))
+
+(defn prefix-lens?
+  "a is a prefix-lens of b if the data focused by b would be inside the data focused by a."
+  [a b]
+  (when-not (expanded-equal? a b)
+    ;; if any lens in a is equal to or a prefix of any lens in b
+    (some (fn [[a b]] (or (= a b) (prefix? a b)))
+          (for [a (expand-lens a)
+                b (expand-lens b)]
+            [a b]))))

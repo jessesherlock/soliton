@@ -248,3 +248,43 @@
                        (+ :bravo [:alpha :bravo] [:alpha :charlie] :bravos :total)
                        (+ :total (lens/const 10) :total-plus-10)
                        (str :total :total-str))))))
+
+
+(deftest expand-lens-test
+  (is (= [[:foo]] (sut/expand-lens :foo)))
+  (is (= [[:foo :bar]] (sut/expand-lens [:foo :bar])))
+  (is (= #{[:foo :bar]
+           [:foo :baz]} (set (sut/expand-lens [:foo #{:bar :baz}]))))
+  (is (= #{[:foo :a :b] [:foo :one :two] [:foo :three]}
+         (set (sut/expand-lens [:foo {:k1 [:a :b]
+                                      :k2 {:sk1 [:one :two]
+                                           :sk2 :three}}]))))
+  (is (= #{[:foo :x lens/deep-merge]
+           [:foo :y lens/deep-merge]}
+         (set (sut/expand-lens [:foo {:bar :x :baz :y} lens/deep-merge]))))
+
+  (is (= [[:foo :bar]
+          [:foo :baz]
+          [:foo :bam :qux]]
+         (vec (sut/expand-lens [:foo (list :bar :baz [:bam :qux])])))))
+
+(deftest prefix-lens-test
+  (is (sut/prefix-lens? :foo [:foo :bar]))
+  (is (sut/prefix-lens? [:foo :bar] [:foo :bar :baz]))
+  (is (not (sut/prefix-lens? :foo :bar)))
+  (is (not (sut/prefix-lens? [:foo :bar] [:foo :bar])))
+
+  (is (sut/prefix-lens? [:foo :bar] {:a :foo :b [:foo :bar :baz]}))
+
+  (let [alpha {:a [:foo :bar] :b [:baz :bam]}
+        bravo {:c :baz :d [:foo :bar :boo]}]
+    (is (sut/prefix-lens? alpha bravo))
+    (is (sut/prefix-lens? bravo alpha)))
+
+  (is (sut/prefix-lens? {:c :baz :d [:foo :bar :boo]}
+                        #{:foo [:baz :bam]}))
+
+
+
+
+  )

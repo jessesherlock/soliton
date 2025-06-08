@@ -6,7 +6,7 @@ Soliton is a Clojure/Clojurescript lens library that covers well behaved lenses 
 
 ** Install
 
-~com.jessesherlock/soliton {:mvn/version "0.1.9"}~ / ~[com.jessesherlock/soliton "0.1.9"]~
+~com.jessesherlock/soliton {:mvn/version "0.1.10"}~ / ~[com.jessesherlock/soliton "0.1.10"]~
 
 ** Basic lens operations
 
