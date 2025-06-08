@@ -161,7 +161,7 @@
 (extend-type #?(:clj clojure.lang.IPersistentList
                 :cljs cljs.core/IList)
   p/Focus
-  (-focus [l s] (set-focus l s))
+  (-focus [l s] (set-focus (vec l) s))
   p/Put
   (-put [l v s] (set-put l v s))
   p/Over

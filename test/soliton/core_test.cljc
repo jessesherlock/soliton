@@ -167,6 +167,13 @@
                      name
                      test-map)))))
 
+(deftest list-compound-lens-test
+  (is (= (list :rome :paris)
+         (sut/focus [:eu (list [:italy :capital] [:france :capital])]
+                    {:eu {:italy {:capital :rome, :lang :italian}
+                          :france {:capital :paris, :lang :french}}
+                     :australia {:capital :canberra, :lang :english}}))))
+
 (deftest reflect-test
   (let [test-map {:bravo 1
                   :alpha {:bravo 2
@@ -184,16 +191,16 @@
              ((sut/<> + :bravo [:alpha :bravo] :bravos) test-map))))
 
     (testing "2 argument reflection, arg is [:alpha :charlie] and result in :charlie-incd"
-        (is (= {:bravo 1
-                :alpha {:bravo 2
-                        :charlie 1}
-                :charlie-incd 2}
+      (is (= {:bravo 1
+              :alpha {:bravo 2
+                      :charlie 1}
+              :charlie-incd 2}
 
-               (sut/over (sut/reflector [:alpha :charlie] :charlie-incd) inc test-map)
+             (sut/over (sut/reflector [:alpha :charlie] :charlie-incd) inc test-map)
 
-               (sut/reflect [[:alpha :charlie] :charlie-incd] inc test-map)
+             (sut/reflect [[:alpha :charlie] :charlie-incd] inc test-map)
 
-               ((sut/<> inc [:alpha :charlie] :charlie-incd) test-map))))
+             ((sut/<> inc [:alpha :charlie] :charlie-incd) test-map))))
 
     (testing "1 argument reflection, a normal non-reflection"
       (is (= {:bravo "1"
