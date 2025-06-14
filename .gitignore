@@ -5,3 +5,4 @@ target/*
 .shadow-cljs/*
 .rebel_readline_history
 pom.xml
+*~undo-tree~

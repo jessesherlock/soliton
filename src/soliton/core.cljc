@@ -158,14 +158,26 @@
 
 ;; ** fns for lists of lenses
 
+(defn list-put
+  [lens-list vs s]
+  (let [[lens & lenses] lens-list
+        [v & vs] vs]
+    (if lenses
+      (recur lenses vs (p/-put lens v s))
+      (p/-put lens v s))))
+
+(defn list-over
+  [lens-list f s]
+  (p/-put lens-list (f (p/-focus lens-list s)) s))
+
 (extend-type #?(:clj clojure.lang.IPersistentList
                 :cljs cljs.core/IList)
   p/Focus
   (-focus [l s] (set-focus (vec l) s))
   p/Put
-  (-put [l v s] (set-put l v s))
+  (-put [l v s] (list-put l v s))
   p/Over
-  (-over [l f s] (set-over l f s)))
+  (-over [l f s] (list-over l f s)))
 
 
 ;; * Reflection

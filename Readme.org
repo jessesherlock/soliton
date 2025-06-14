@@ -6,7 +6,7 @@ Soliton is a Clojure/Clojurescript lens library that covers well behaved lenses 
 
 ** Install
 
-~com.jessesherlock/soliton {:mvn/version "0.1.11"}~ / ~[com.jessesherlock/soliton "0.1.11"]~
+~com.jessesherlock/soliton {:mvn/version "0.2.0"}~ / ~[com.jessesherlock/soliton "0.2.0"]~
 
 ** Basic lens operations
 
@@ -104,7 +104,7 @@ Lenses are composed by putting them in a vector
 
 ** Odd lenses
 
-Soliton also includes very odd lens-type things that end up being frequently useful. A vector of lenses are composed lenses, focused on in sequence. Maps and Sets of lenses are also available.
+Soliton also includes very odd lens-type things that end up being frequently useful. A vector of lenses are composed lenses, focused on in sequence. Maps, Sets and Lists of lenses are also available but do occasionally act in useful but non-standard ways.
 
 *** Lens Maps
 
@@ -140,10 +140,20 @@ A map of keys to lenses:
 *** Lens Sets
 
 A set of lenses:
-- focuses by returning a set of results
+- focuses by returning a set of results, the set resulting from focusing each lens in the set
 - puts the same value at the location for each lens in the set
 - over runs the function at the location for each lens in the set
+- Lens Sets, unlike Lens maps/lists, do not respect the standard relation between focus/put and over
+  since over does not call the function ont the focused value
 
+
+*** Lens Lists
+A list of lenses
+- focuses by returning a list of results corresponding to the lenses in the list
+- puts each element of a list of values into the location for the
+  corresponding lens (nil values if the input list is shorter than the lens list)
+- over applies the function to the focus list and expects the function to return a list
+  which it puts as above.
 
 ** Reflections
 

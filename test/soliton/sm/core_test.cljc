@@ -86,12 +86,6 @@
            (sut/focus [:eu #{[:italy :lang]
                              [:france :lang]}]
                       test-map)))
-    ;; so sets end up kinda allowing very limited traversals
-    ;; mostly by accident
-    ;; only if the set lens is at the end (since focus doesn't know to join
-    ;; results at all)
-    ;; it's useful-ish and comes for free but don't expect real traversals
-    ;; with focus/put/over lens functions
     (is (= {:eu {:italy {:capital :rome, :lang :italian, :tagged true}
                  :france {:capital :paris, :lang :french, :tagged true}}
             :australia {:capital :canberra, :lang :english}}
@@ -107,6 +101,20 @@
                             [:france :capital]}]
                      name
                      test-map)))))
+
+(deftest list-compound-lens-test
+  (is (= (list :rome :paris)
+         (sut/focus [:eu (list [:italy :capital] [:france :capital])]
+                    {:eu {:italy {:capital :rome, :lang :italian}
+                          :france {:capital :paris, :lang :french}}
+                     :australia {:capital :canberra, :lang :english}})))
+  (is (= {:a :alpha
+          :b :bravo}
+         (sut/put '(:a :b) '(:alpha :bravo) {:a nil :b nil})))
+  (is (= {:nums {:one 1 :two 2 :three 3}}
+         (sut/over [:nums (list :one :two :three)]
+                   (fn [args] (map inc args))
+                   {:nums {:one 0 :two 1 :three 2}}))))
 
 (deftest focus-steps-test
   (is (= [{:lenses [:foo 1], :state {:foo [:x :value]}}

@@ -172,7 +172,14 @@
          (sut/focus [:eu (list [:italy :capital] [:france :capital])]
                     {:eu {:italy {:capital :rome, :lang :italian}
                           :france {:capital :paris, :lang :french}}
-                     :australia {:capital :canberra, :lang :english}}))))
+                     :australia {:capital :canberra, :lang :english}})))
+  (is (= {:a :alpha
+          :b :bravo}
+         (sut/put '(:a :b) '(:alpha :bravo) {:a nil :b nil})))
+  (is (= {:nums {:one 1 :two 2 :three 3}}
+         (sut/over [:nums (list :one :two :three)]
+                   (fn [args] (map inc args))
+                   {:nums {:one 0 :two 1 :three 2}}))))
 
 (deftest reflect-test
   (let [test-map {:bravo 1
