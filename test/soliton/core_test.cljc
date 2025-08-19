@@ -249,14 +249,6 @@
                :total-str "7"
                :total-plus-10 17}
 
-              {:bravo 1
-               :alpha {:bravo 2
-                       :charlie 1}
-               :bravos 3
-               :total 7
-               :total-str "7"
-               :total-plus-10 17}
-
               (sut/-<> test-map
                        (+ :bravo [:alpha :bravo] :bravos)
                        (+ :bravo [:alpha :bravo] [:alpha :charlie] :bravos :total)

@@ -3,9 +3,9 @@
 
 (def lib 'com.jessesherlock/soliton)
 
-(def url "https://github.com/jessesherlock/Soliton")
+(def url "https://github.com/jessesherlock/soliton")
 
-(def version "0.2.0")
+(def version "0.2.1")
 
 (def class-dir "target/classes")
 

@@ -93,13 +93,22 @@
     (over l f s)))
 
 (extend-type #?(:clj clojure.lang.IPersistentVector
-                :cljs cljs.core/IVector)
+                :cljs cljs.core/PersistentVector)
   p/Focus
   (-focus [l s] (reduce-focus l s))
   p/Put
   (-put [l v s] (rec-put l v s))
   p/Over
   (-over [l f s] (rec-over l f s)))
+
+#?(:cljs
+   (extend-type cljs.core/Subvec
+     p/Focus
+     (-focus [l s] (reduce-focus l s))
+     p/Put
+     (-put [l v s] (rec-put l v s))
+     p/Over
+     (-over [l f s] (rec-over l f s))))
 
 ;; ** fns for maps of lenses
 
@@ -117,15 +126,41 @@
              s
              lens-map))
 
-(extend-type #?(:clj clojure.lang.IPersistentMap
-                :cljs cljs.core/IMap)
-  p/Focus
-  (-focus [l s] (map-focus l s))
-  p/Put
-  (-put [l v s] (map-put l v s))
-  p/Over
-  (-over [l f s] (p/default-over l f s)))
+#?(:clj
+   (extend-type clojure.lang.IPersistentMap
+     p/Focus
+     (-focus [l s] (map-focus l s))
+     p/Put
+     (-put [l v s] (map-put l v s))
+     p/Over
+     (-over [l f s] (p/default-over l f s))))
 
+#?(:cljs
+   (extend-type cljs.core/PersistentArrayMap
+     p/Focus
+     (-focus [l s] (map-focus l s))
+     p/Put
+     (-put [l v s] (map-put l v s))
+     p/Over
+     (-over [l f s] (p/default-over l f s))))
+
+#?(:cljs
+   (extend-type cljs.core/PersistentHashMap
+     p/Focus
+     (-focus [l s] (map-focus l s))
+     p/Put
+     (-put [l v s] (map-put l v s))
+     p/Over
+     (-over [l f s] (p/default-over l f s))))
+
+#?(:cljs
+   (extend-type cljs.core/PersistentTreeMap
+     p/Focus
+     (-focus [l s] (map-focus l s))
+     p/Put
+     (-put [l v s] (map-put l v s))
+     p/Over
+     (-over [l f s] (p/default-over l f s))))
 
 ;; ** fns for sets of lenses
 
@@ -148,13 +183,22 @@
       (p/-over lens f s))))
 
 (extend-type #?(:clj clojure.lang.IPersistentSet
-                :cljs cljs.core/ISet)
+                :cljs cljs.core/PersistentHashSet)
   p/Focus
   (-focus [l s] (set-focus l s))
   p/Put
   (-put [l v s] (set-put l v s))
   p/Over
   (-over [l f s] (set-over l f s)))
+
+#?(:cljs
+   (extend-type cljs.core/PersistentTreeSet
+     p/Focus
+     (-focus [l s] (set-focus l s))
+     p/Put
+     (-put [l v s] (set-put l v s))
+     p/Over
+     (-over [l f s] (set-over l f s))))
 
 ;; ** fns for lists of lenses
 
@@ -171,7 +215,7 @@
   (p/-put lens-list (f (p/-focus lens-list s)) s))
 
 (extend-type #?(:clj clojure.lang.IPersistentList
-                :cljs cljs.core/IList)
+                :cljs cljs.core/List)
   p/Focus
   (-focus [l s] (set-focus (vec l) s))
   p/Put
