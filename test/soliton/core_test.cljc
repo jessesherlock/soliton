@@ -257,7 +257,7 @@
 
 
 (deftest expand-lens-test
-  (is (= [[:foo]] (sut/expand-lens :foo)))
+  (is (= [:foo] (sut/expand-lens :foo)))
   (is (= [[:foo :bar]] (sut/expand-lens [:foo :bar])))
   (is (= #{[:foo :bar]
            [:foo :baz]} (set (sut/expand-lens [:foo #{:bar :baz}]))))
@@ -277,8 +277,8 @@
 (deftest prefix-lens-test
   (is (sut/prefix-lens? :foo [:foo :bar]))
   (is (sut/prefix-lens? [:foo :bar] [:foo :bar :baz]))
+  (is (sut/prefix-lens? [:foo :bar] [:foo :bar]))
   (is (not (sut/prefix-lens? :foo :bar)))
-  (is (not (sut/prefix-lens? [:foo :bar] [:foo :bar])))
 
   (is (sut/prefix-lens? [:foo :bar] {:a :foo :b [:foo :bar :baz]}))
 
@@ -288,9 +288,4 @@
     (is (sut/prefix-lens? bravo alpha)))
 
   (is (sut/prefix-lens? {:c :baz :d [:foo :bar :boo]}
-                        #{:foo [:baz :bam]}))
-
-
-
-
-  )
+                        #{:foo [:baz :bam]})))

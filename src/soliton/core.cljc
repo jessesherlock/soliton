@@ -272,39 +272,50 @@
 ;; when using the odd lenses (maps/sets/lists) it can be useful to
 ;; get the set of all locations being lensed into
 
-(defn expand-append
-  [acc l]
-  (mapv #(conj % l) acc))
+(defn normalize-lens
+  [l]
+  (cond
+    (vector? l) (if (= 1 (count l)) (l 0) l)
+    (fn? l) (if (= identity l) soliton.lens/id l)
+    :else l))
+
+(defn expand-lens*
+  [l acc]
+  (cond
+    (nil? l) acc
+    (vector? l) (let [[x & xs] l]
+                  (expand-lens* (if xs (vec xs)) (expand-lens* x acc)))
+    (map? l) (expand-lens* (set (vals l)) acc)
+    (or (list? l)
+        (set? l)) (let [ls (seq l)]
+        (vec (mapcat #(expand-lens* % acc) ls)))
+    :else (mapv #(conj % l) acc)))
 
 (defn expand-lens
-  ([l] (expand-lens l [[]]))
-  ([l acc]
-   (cond
-     (nil? l) acc
-     (vector? l) (let [[x & xs] l]
-                   (expand-lens (if xs (vec xs)) (expand-lens x acc)))
-     (map? l) (expand-lens (set (vals l)) acc)
-     (or (list? l)
-         (set? l)) (let [ls (seq l)]
-                     (vec (mapcat #(expand-lens % acc) ls)))
-     :else (expand-append acc l))))
+  [l]
+  (mapv normalize-lens (expand-lens* l [[]])))
 
-(defn expanded-equal?
-  [a b]
-  (= (sort (expand-lens a)) (sort (expand-lens b))))
+(def id-lens? #{soliton.lens/id identity})
+
+(defn const-lens? [l] (= soliton.lens.Const (type l)))
 
 (defn prefix?
   [a b]
-  (let [count-a (count a)]
-    (when-not (>= count-a (count b))
-      (= (seq a) (take count-a b)))))
+  (or
+   (id-lens? a)
+   (when-not (or (nil? a) (nil? b) (const-lens? a) (const-lens? b))
+     (or (and (id-lens? a) (not (id-lens? b)))
+         (let [a (if (vector? a) a [a])
+               b (if (vector? b) b [b])
+               count-a (count a)]
+           (when-not (>= count-a (count b))
+             (= (seq a) (take count-a b))))))))
 
 (defn prefix-lens?
   "a is a prefix-lens of b if the data focused by b would be inside the data focused by a."
   [a b]
-  (when-not (expanded-equal? a b)
-    ;; if any lens in a is equal to or a prefix of any lens in b
-    (some (fn [[a b]] (or (= a b) (prefix? a b)))
-          (for [a (expand-lens a)
-                b (expand-lens b)]
-            [a b]))))
+  ;; if any lens in a is equal to or a prefix of any lens in b
+  (some (fn [[a b]] (or (= a b) (prefix? a b)))
+        (for [a (expand-lens a)
+              b (expand-lens b)]
+          [a b])))

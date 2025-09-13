@@ -5,7 +5,7 @@
 
 (def url "https://github.com/jessesherlock/soliton")
 
-(def version "0.2.1")
+(def version "0.3.0")
 
 (def class-dir "target/classes")
 
